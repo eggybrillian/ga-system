@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1777343882366,
+      "tag": "0000_stiff_star_brand",
+      "breakpoints": true
+    }
+  ]
+}
