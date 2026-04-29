@@ -144,6 +144,16 @@ async function main() {
     { objectType: 'meeting_room', category: 'user_satisfaction',  text: 'Kepuasan keseluruhan terhadap fasilitas meeting room', weight: '1.0', sortOrder: 1 },
   ])
 
+  // ── SETTINGS ───────────────────────────────────────────────
+  console.log('  → settings')
+  await db.insert(schema.settings).values([
+    { key: 'threshold',                   value: '60' },
+    { key: 'weight_facility_quality',     value: '0.35' },
+    { key: 'weight_service_performance',  value: '0.40' },
+    { key: 'weight_user_satisfaction',    value: '0.25' },
+    { key: 'odoo_ga_department_id',       value: '5' },
+  ])
+
   console.log('✅ Seed selesai!')
   console.log('')
   console.log('Akun dummy (password: password123):')

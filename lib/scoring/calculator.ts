@@ -7,6 +7,7 @@ import {
   objects,
   gaStaff,
   questions,
+  settings,
 } from '@/lib/db/schema'
 import { eq, and, isNotNull } from 'drizzle-orm'
 
@@ -18,6 +19,36 @@ export const DEFAULT_WEIGHTS = {
 }
 
 export type CategoryWeights = typeof DEFAULT_WEIGHTS
+
+/**
+ * Ambil settings dari DB, dengan fallback ke default values.
+ */
+export async function getSettings() {
+  try {
+    const rows = await db.query.settings.findMany()
+    const settingsMap: Record<string, string> = {}
+    for (const row of rows) {
+      settingsMap[row.key] = row.value
+    }
+
+    return {
+      threshold:              parseFloat(settingsMap.threshold ?? '60'),
+      weight_facility_quality: parseFloat(settingsMap.weight_facility_quality ?? '0.35'),
+      weight_service_performance: parseFloat(settingsMap.weight_service_performance ?? '0.40'),
+      weight_user_satisfaction: parseFloat(settingsMap.weight_user_satisfaction ?? '0.25'),
+      odoo_ga_department_id:  parseInt(settingsMap.odoo_ga_department_id ?? '5'),
+    }
+  } catch {
+    // Fallback ke defaults jika DB error
+    return {
+      threshold:              60,
+      weight_facility_quality: 0.35,
+      weight_service_performance: 0.40,
+      weight_user_satisfaction: 0.25,
+      odoo_ga_department_id:  5,
+    }
+  }
+}
 
 export type ObjectScore = {
   objectId:   string
@@ -206,14 +237,31 @@ export async function calcGAScores(
  * Hitung ulang dan return skor GA (untuk dipanggil setelah submit evaluasi).
  */
 export async function getActivePeriodScores(
-  weights = DEFAULT_WEIGHTS,
-  threshold = 60
+  weights?: CategoryWeights,
+  threshold?: number
 ) {
   const period = await db.query.evaluationPeriods.findFirst({
     where: eq(evaluationPeriods.status, 'open'),
   })
   if (!period) return { period: null, gaScores: [] }
 
-  const gaScores = await calcGAScores(period.id, weights, threshold)
+  // Jika tidak ada weights/threshold yang diberikan, ambil dari settings
+  let finalWeights = weights
+  let finalThreshold = threshold
+  if (!weights || !threshold) {
+    const dbSettings = await getSettings()
+    if (!weights) {
+      finalWeights = {
+        facility_quality: dbSettings.weight_facility_quality,
+        service_performance: dbSettings.weight_service_performance,
+        user_satisfaction: dbSettings.weight_user_satisfaction,
+      }
+    }
+    if (!threshold) {
+      finalThreshold = dbSettings.threshold
+    }
+  }
+
+  const gaScores = await calcGAScores(period.id, finalWeights!, finalThreshold!)
   return { period, gaScores }
 }

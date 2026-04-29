@@ -223,6 +223,16 @@ export const syncLogs = pgTable('sync_logs', {
 })
 
 // ============================================================
+// SETTINGS (key-value config store)
+// ============================================================
+
+export const settings = pgTable('settings', {
+  key:       varchar('key', { length: 100 }).primaryKey(),
+  value:     text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
@@ -289,3 +299,4 @@ export type EvaluationScore        = typeof evaluationScores.$inferSelect
 export type NewEvaluationScore     = typeof evaluationScores.$inferInsert
 export type Notification           = typeof notifications.$inferSelect
 export type SyncLog                = typeof syncLogs.$inferSelect
+export type Setting                = typeof settings.$inferSelect

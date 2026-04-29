@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 type GAStaff = { id: string; name: string; nik: string }
 type User    = { id: string; name: string; nik: string; department: string }
@@ -27,8 +26,6 @@ type ObjForm = { name: string; type: string; picGaId: string }
 const EMPTY_FORM: ObjForm = { name: '', type: 'office', picGaId: '' }
 
 export default function AdminObjectsPage() {
-  const router = useRouter()
-
   const [items, setItems]       = useState<ObjectItem[]>([])
   const [gaList, setGAList]     = useState<GAStaff[]>([])
   const [userList, setUserList] = useState<User[]>([])
@@ -123,25 +120,20 @@ export default function AdminObjectsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="border-b border-white/[0.06] sticky top-0 z-10 bg-[#0f1117]/90 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between h-auto md:h-14">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/admin/dashboard')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors">
-              <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <h1 className="font-semibold ml-2">Kelola Objek</h1>
-          </div>
+      <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <button onClick={openCreate} className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              <span className="hidden sm:inline">Tambah Objek</span>
-              <span className="sm:hidden">Tambah</span>
-            </button>
+            <h1 className="text-lg md:text-xl font-semibold">Kelola Objek</h1>
+            <p className="text-white/30 text-sm mt-0.5">
+              Atur fasilitas, PIC GA, dan daftar user penilai untuk setiap objek
+            </p>
           </div>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            <span className="hidden sm:inline">Tambah Objek</span>
+            <span className="sm:hidden">Tambah</span>
+          </button>
         </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
         {loading ? (
           <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-xl animate-pulse" />)}</div>
         ) : items.length === 0 ? (

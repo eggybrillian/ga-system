@@ -82,22 +82,54 @@ function ScoreBar({ value, isBelow }: { value: number | null; isBelow?: boolean 
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
+type AnalyticsData = {
+  topLowestObjects: Array<{
+    objectId: string
+    objectName: string
+    objectType: string
+    gaName: string
+    avgScore: number
+    submissionCount: number
+  }>
+  topLowestQuestions: Array<{
+    questionId: string
+    questionText: string
+    category: string
+    avgScore: number
+    responseCount: number
+  }>
+  criticalFeedback: Array<{
+    score: number
+    category: string
+    comment: string | null
+    questionText: string
+    objectName: string
+  }>
+  categoryAverages: Record<string, number>
+}
+
 export default function AdminDashboardPage() {
-  const [period, setPeriod]     = useState<Period | null>(null)
-  const [gaScores, setGAScores] = useState<GAScore[]>([])
-  const [stats, setStats]       = useState<Stats | null>(null)
-  const [loading, setLoading]   = useState(true)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [period, setPeriod]           = useState<Period | null>(null)
+  const [gaScores, setGAScores]       = useState<GAScore[]>([])
+  const [stats, setStats]             = useState<Stats | null>(null)
+  const [analytics, setAnalytics]     = useState<AnalyticsData | null>(null)
+  const [loading, setLoading]         = useState(true)
+  const [expanded, setExpanded]       = useState<string | null>(null)
+  const [issuesTab, setIssuesTab]     = useState<'objects' | 'questions' | 'feedback'>('objects')
 
   function fetchData() {
     setLoading(true)
-    fetch('/api/admin/scores')
-      .then(r => r.json())
-      .then(d => {
-        setPeriod(d.period)
-        setGAScores(d.gaScores ?? [])
-        setStats(d.stats)
+    Promise.all([
+      fetch('/api/admin/scores').then(r => r.json()),
+      fetch('/api/admin/dashboard-analytics').then(r => r.json()),
+    ])
+      .then(([scoresData, analyticsData]) => {
+        setPeriod(scoresData.period)
+        setGAScores(scoresData.gaScores ?? [])
+        setStats(scoresData.stats)
+        setAnalytics(analyticsData)
       })
+      .catch(err => console.error('Error fetching data:', err))
       .finally(() => setLoading(false))
   }
 
@@ -105,7 +137,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-
+      <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
           {/* Page header */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -140,6 +172,138 @@ export default function AdminDashboardPage() {
                   <p className="text-white/20 text-xs mt-1 truncate">{card.sub}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Category Performance Trend */}
+          {analytics && Object.keys(analytics.categoryAverages).length > 0 && (
+            <div className="bg-[#161b27] border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
+              <div className="px-4 md:px-5 py-4 border-b border-white/[0.06]">
+                <h2 className="font-medium text-sm">Performa Kategori</h2>
+              </div>
+              <div className="px-4 md:px-5 py-4 space-y-3">
+                {Object.entries(analytics.categoryAverages).map(([cat, score]) => {
+                  const catLabel = CAT_SHORT[cat as keyof typeof CAT_SHORT] || cat
+                  const color = score < 60 ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
+                  return (
+                    <div key={cat} className="flex items-center gap-3">
+                      <span className="text-white/60 text-xs font-medium w-24 md:w-28 shrink-0">{catLabel}</span>
+                      <div className="flex-1">
+                        <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                          <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${score}%` }} />
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-white w-10 text-right shrink-0">{score.toFixed(1)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Top Issues Section */}
+          {analytics && (
+            <div className="bg-[#161b27] border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
+              <div className="px-4 md:px-5 py-4 border-b border-white/[0.06]">
+                <h2 className="font-medium text-sm mb-3">Isu Utama</h2>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'objects', label: 'Objek Rendah', count: analytics.topLowestObjects.length },
+                    { id: 'questions', label: 'Pertanyaan Rendah', count: analytics.topLowestQuestions.length },
+                    { id: 'feedback', label: 'Feedback Kritis', count: analytics.criticalFeedback.length },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setIssuesTab(tab.id as typeof issuesTab)}
+                      className={`text-xs md:text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                        issuesTab === tab.id
+                          ? 'bg-white/[0.12] text-white border border-white/[0.2]'
+                          : 'bg-white/[0.05] text-white/40 hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      {tab.label} {tab.count > 0 && <span className="text-xs ml-1">({tab.count})</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-4 md:px-5 py-4">
+                {issuesTab === 'objects' && (
+                  <div className="space-y-3">
+                    {analytics.topLowestObjects.length === 0 ? (
+                      <p className="text-white/30 text-sm">Tidak ada data</p>
+                    ) : (
+                      analytics.topLowestObjects.map((obj, idx) => (
+                        <div key={obj.objectId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-lg">{TYPE_ICON[obj.objectType]}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{obj.objectName}</p>
+                              <p className="text-white/40 text-xs truncate">PIC: {obj.gaName}</p>
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                              obj.avgScore < 60 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {obj.avgScore.toFixed(1)}
+                            </span>
+                          </div>
+                          <p className="text-white/40 text-xs">{obj.submissionCount} evaluasi</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {issuesTab === 'questions' && (
+                  <div className="space-y-3">
+                    {analytics.topLowestQuestions.length === 0 ? (
+                      <p className="text-white/30 text-sm">Tidak ada data</p>
+                    ) : (
+                      analytics.topLowestQuestions.map((q) => (
+                        <div key={q.questionId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
+                          <div className="flex items-start gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white break-words">{q.questionText}</p>
+                              <p className="text-white/40 text-xs mt-1">
+                                {CAT_SHORT[q.category as keyof typeof CAT_SHORT] || q.category} • {q.responseCount} respon
+                              </p>
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded shrink-0 ${
+                              q.avgScore < 60 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {q.avgScore.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {issuesTab === 'feedback' && (
+                  <div className="space-y-3">
+                    {analytics.criticalFeedback.length === 0 ? (
+                      <p className="text-white/30 text-sm">Tidak ada feedback kritis</p>
+                    ) : (
+                      analytics.criticalFeedback.map((fb, idx) => (
+                        <div key={idx} className="bg-[#0f1117] border border-red-500/20 rounded-lg p-3">
+                          <div className="flex items-start gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-red-400 font-semibold mb-1">
+                                ⚠ Skor {fb.score}/5 • {fb.objectName}
+                              </p>
+                              <p className="text-white/60 text-xs mb-1">{fb.questionText}</p>
+                              {fb.comment && (
+                                <p className="text-sm text-white/80 italic break-words">"{fb.comment}"</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -282,7 +446,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
-
+      </main>
     </div>
   )
 }
