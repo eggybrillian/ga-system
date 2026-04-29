@@ -144,7 +144,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="text-white/20 text-xs text-center mt-6">
-            General Affairs · PT. Perusahaan
+            General Affairs · PT Graha Prima Energy
           </p>
         </div>
       </div>
