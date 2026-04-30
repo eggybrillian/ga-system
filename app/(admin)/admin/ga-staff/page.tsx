@@ -5,6 +5,7 @@ import PageHeader from '@/components/admin/PageHeader'
 import ActionButton from '@/components/admin/ActionButton'
 import ScoreBar from '@/components/admin/ScoreBar'
 import StatusBadge from '@/components/admin/StatusBadge'
+import PeriodSelector from '@/components/admin/PeriodSelector'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -57,21 +58,29 @@ const CAT_SHORT: Record<string, string> = {
 
 export default function GAStaffPage() {
   const [period, setPeriod]      = useState<Period | null>(null)
+  const [periods, setPeriods]    = useState<Period[]>([])
+  const [selectedPeriodIds, setSelectedPeriodIds] = useState<string[]>([])
   const [gaStaff, setGAStaff]    = useState<GAStaffItem[]>([])
   const [loading, setLoading]    = useState(true)
   const [expanded, setExpanded]  = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  function fetchData(periodId?: string) {
+  function fetchData(periodIds?: string[]) {
     setLoading(true)
-    const url = periodId
-      ? `/api/admin/ga-staff?periodId=${periodId}`
-      : '/api/admin/ga-staff'
+    const params = new URLSearchParams()
+    const ids = periodIds ?? selectedPeriodIds
+    for (const id of ids) params.append('periodId', id)
+    const url = `/api/admin/ga-staff?${params.toString()}`
 
     fetch(url)
       .then(r => r.json())
       .then(d => {
-        setPeriod(d.period)
+        // period may be single or array
+        if (Array.isArray(d.period)) {
+          setPeriod(d.period[0] ?? null)
+        } else {
+          setPeriod(d.period)
+        }
         setGAStaff(d.gaStaff ?? [])
       })
       .catch(err => console.error('Error fetching GA staff:', err))
@@ -79,8 +88,24 @@ export default function GAStaffPage() {
   }
 
   useEffect(() => {
-    fetchData()
+    // fetch periods list first to default-select latest
+    fetch('/api/admin/periods')
+      .then(r => r.json())
+      .then((rows: Period[]) => {
+        setPeriods(rows)
+        if (rows.length > 0) {
+          const latest = rows.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          setSelectedPeriodIds([latest.id])
+        }
+      })
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (selectedPeriodIds.length > 0) {
+      fetchData(selectedPeriodIds)
+    }
+  }, [selectedPeriodIds])
 
   // Filter by search query
   const filtered = gaStaff.filter(ga =>
@@ -97,9 +122,26 @@ export default function GAStaffPage() {
       {/* Page header */}
       <PageHeader
         title="GA Staff"
-        subtitle={period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
+        subtitle={
+          selectedPeriodIds.length === 0
+            ? (period ? `Periode: ${period.label}` : 'Tidak ada periode aktif')
+            : selectedPeriodIds.length === 1
+              ? (period ? `Periode: ${period.label}` : 'Memuat...')
+              : `${selectedPeriodIds.length} terpilih`
+        }
         actions={<ActionButton onClick={() => fetchData()} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
       />
+      {/* Period selector */}
+      <div className="flex items-center gap-3">
+        <label className="text-white/40 text-xs mr-2">Pilih Periode</label>
+        <div>
+          <PeriodSelector
+            periods={periods}
+            selected={selectedPeriodIds}
+            onChange={(ids) => setSelectedPeriodIds(ids)}
+          />
+        </div>
+      </div>
 
       {/* Stats */}
       {gaStaff.length > 0 && (

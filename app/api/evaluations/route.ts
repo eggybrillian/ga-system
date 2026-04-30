@@ -8,8 +8,12 @@ import {
   evaluationPeriods,
   objectUserAssignments,
   questions,
+  objects,
+  adminFlags,
+  notifications,
 } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { calcGAScores, getSettings } from '@/lib/scoring/calculator'
 
 type ScoreInput = {
   questionId: string
@@ -123,6 +127,50 @@ export async function POST(req: NextRequest) {
         }))
       )
     })
+
+    if (!isDraft) {
+      const objectRow = await db.query.objects.findFirst({
+        where: eq(objects.id, objectId),
+        with: { picGa: true },
+      })
+
+      if (objectRow?.picGaId) {
+        const dbSettings = await getSettings()
+        const weights = {
+          facility_quality: dbSettings.weight_facility_quality,
+          service_performance: dbSettings.weight_service_performance,
+          user_satisfaction: dbSettings.weight_user_satisfaction,
+        }
+
+        const gaScores = await calcGAScores(period.id, weights, dbSettings.threshold)
+        const targetGa = gaScores.find((ga) => ga.gaId === objectRow.picGaId)
+
+        if (targetGa?.isBelow) {
+          const message = `Skor GA ${targetGa.gaName} berada di bawah threshold (${targetGa.finalScore?.toFixed(1) ?? '-'} < ${dbSettings.threshold}%).`
+
+          const adminRows = await db.query.adminFlags.findMany({
+            where: eq(adminFlags.isActive, true),
+          })
+
+          const notificationRows: Array<typeof notifications.$inferInsert> = [
+            ({
+              recipientType: 'ga_staff',
+              recipientId: objectRow.picGaId,
+              message,
+              trigger: 'below_threshold',
+            } as typeof notifications.$inferInsert),
+            ...adminRows.map((admin) => ({
+              recipientType: 'admin',
+              recipientId: admin.id,
+              message,
+              trigger: 'below_threshold',
+            } as typeof notifications.$inferInsert)),
+          ]
+
+          await db.insert(notifications).values(notificationRows)
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

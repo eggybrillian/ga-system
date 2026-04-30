@@ -234,34 +234,153 @@ export async function calcGAScores(
 }
 
 /**
+ * Hitung skor GA dengan menggabungkan data dari beberapa periode.
+ * Implementasi: ambil semua form dari periode yang diberikan dan hitung seperti biasa.
+ */
+export async function calcGAScoresForPeriodIds(
+  periodIds: string[],
+  weights: CategoryWeights = DEFAULT_WEIGHTS,
+  threshold = 60
+): Promise<GAScore[]> {
+  if (!periodIds || periodIds.length === 0) return []
+
+  // Ambil semua form yang sudah disubmit (bukan draft) di periode-periode ini
+  const forms = await db.query.evaluationForms.findMany({
+    where: (q, { inArray }) => inArray(q.periodId, periodIds),
+    with: {
+      scores: {
+        with: { question: true },
+      },
+      object: {
+        with: { picGa: true },
+      },
+    },
+  })
+
+  // filter safety: only submitted and not draft
+  const submittedForms = forms.filter(f => !f.isDraft && f.submittedAt)
+
+  // Kelompokkan form per objek
+  const byObject = new Map<string, typeof submittedForms>()
+  for (const form of submittedForms) {
+    const key = form.objectId
+    if (!byObject.has(key)) byObject.set(key, [])
+    byObject.get(key)!.push(form)
+  }
+
+  // Ambil semua GA staff aktif beserta objek yang mereka kelola
+  const allGA = await db.query.gaStaff.findMany({
+    where: eq(gaStaff.isActive, true),
+    with: { objects: { where: eq(objects.isDeleted, false) } },
+  })
+
+  const result: GAScore[] = []
+
+  for (const ga of allGA) {
+    const objectScores: ObjectScore[] = []
+
+    for (const obj of ga.objects) {
+      const objForms = byObject.get(obj.id) ?? []
+
+      if (objForms.length === 0) {
+        objectScores.push({
+          objectId:        obj.id,
+          objectName:      obj.name,
+          objectType:      obj.type,
+          scores:          { facility_quality: null, service_performance: null, user_satisfaction: null, final: null },
+          submissionCount: 0,
+        })
+        continue
+      }
+
+      const byCategory: Record<string, { score: number; weight: string }[]> = {
+        facility_quality:    [],
+        service_performance: [],
+        user_satisfaction:   [],
+      }
+
+      for (const form of objForms) {
+        for (const s of form.scores) {
+          const cat = s.category
+          if (byCategory[cat]) {
+            byCategory[cat].push({ score: s.score, weight: s.question.weight })
+          }
+        }
+      }
+
+      const catScores = {
+        facility_quality:    calcCategoryScore(byCategory.facility_quality),
+        service_performance: calcCategoryScore(byCategory.service_performance),
+        user_satisfaction:   calcCategoryScore(byCategory.user_satisfaction),
+      }
+
+      const finalScore = calcFinalScore(catScores, weights)
+
+      objectScores.push({
+        objectId:        obj.id,
+        objectName:      obj.name,
+        objectType:      obj.type,
+        scores:          { ...catScores, final: finalScore },
+        submissionCount: objForms.length,
+      })
+    }
+
+    const scored = objectScores.filter(o => o.scores.final !== null)
+    const gaFinal = scored.length === 0
+      ? null
+      : scored.reduce((sum, o) => sum + o.scores.final!, 0) / scored.length
+
+    const gaScore100 = gaFinal !== null ? (gaFinal / 5) * 100 : null
+
+    result.push({
+      gaId:         ga.id,
+      gaName:       ga.name,
+      gaNik:        ga.nik,
+      objectScores,
+      finalScore:   gaScore100 !== null ? Math.round(gaScore100 * 10) / 10 : null,
+      isBelow:      gaScore100 !== null && gaScore100 < threshold,
+    })
+  }
+
+  result.sort((a, b) => {
+    if (a.finalScore === null && b.finalScore === null) return 0
+    if (a.finalScore === null) return 1
+    if (b.finalScore === null) return -1
+    return b.finalScore - a.finalScore
+  })
+
+  return result
+}
+
+/**
  * Hitung ulang dan return skor GA (untuk dipanggil setelah submit evaluasi).
  */
 export async function getActivePeriodScores(
   weights?: CategoryWeights,
   threshold?: number
 ) {
-  const period = await db.query.evaluationPeriods.findFirst({
-    where: eq(evaluationPeriods.status, 'open'),
-  })
-  if (!period) return { period: null, gaScores: [] }
-
   // Jika tidak ada weights/threshold yang diberikan, ambil dari settings
   let finalWeights = weights
   let finalThreshold = threshold
-  if (!weights || !threshold) {
+  if (finalWeights === undefined || finalThreshold === undefined) {
     const dbSettings = await getSettings()
-    if (!weights) {
+    if (finalWeights === undefined) {
       finalWeights = {
         facility_quality: dbSettings.weight_facility_quality,
         service_performance: dbSettings.weight_service_performance,
         user_satisfaction: dbSettings.weight_user_satisfaction,
       }
     }
-    if (!threshold) {
+    if (finalThreshold === undefined) {
       finalThreshold = dbSettings.threshold
     }
   }
 
+  const period = await db.query.evaluationPeriods.findFirst({
+    where: eq(evaluationPeriods.status, 'open'),
+  })
+  if (!period) return { period: null, gaScores: [], threshold: finalThreshold!, weights: finalWeights! }
+
   const gaScores = await calcGAScores(period.id, finalWeights!, finalThreshold!)
-  return { period, gaScores }
+  return { period, gaScores, threshold: finalThreshold!, weights: finalWeights! }
 }

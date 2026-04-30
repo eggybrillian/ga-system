@@ -66,7 +66,7 @@ function Sidebar({ collapsed, onLogout }: { collapsed: boolean; onLogout: () => 
               onClick={() => router.push(item.href)}
               title={collapsed ? item.label : undefined}
               className={`w-full flex items-center rounded-lg transition-colors
-                ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'}
+                ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-3'}
                 ${active
                   ? 'bg-[#3b82f6]/15 text-blue-400'
                   : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'

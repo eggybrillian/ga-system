@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PeriodSelector from '@/components/admin/PeriodSelector'
 import PageHeader from '@/components/admin/PageHeader'
 import ActionButton from '@/components/admin/ActionButton'
 import ScoreBar from '@/components/admin/ScoreBar'
@@ -93,30 +94,39 @@ type AnalyticsData = {
 
 export default function AdminDashboardPage() {
   const [period, setPeriod]           = useState<Period | null>(null)
+  const [periods, setPeriods]         = useState<Period[]>([])
+  const [selectedPeriodIds, setSelectedPeriodIds] = useState<string[]>([])
   const [gaScores, setGAScores]       = useState<GAScore[]>([])
   const [stats, setStats]             = useState<Stats | null>(null)
   const [analytics, setAnalytics]     = useState<AnalyticsData | null>(null)
   const [loading, setLoading]         = useState(true)
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [issuesTab, setIssuesTab]     = useState<'objects' | 'questions' | 'feedback'>('objects')
-  const [threshold, setThreshold]     = useState<number>(60)
+  const [threshold, setThreshold]     = useState<number | null>(null)
 
   function fetchData() {
     setLoading(true)
+    const params = new URLSearchParams()
+    for (const id of selectedPeriodIds) params.append('periodId', id)
+
     Promise.all([
-      fetch('/api/admin/scores').then(r => r.json()),
-      fetch('/api/admin/dashboard-analytics').then(r => r.json()),
-      fetch('/api/admin/settings').then(r => r.json()),
+      fetch(`/api/admin/scores?${params.toString()}`).then(r => r.json()),
+      fetch(`/api/admin/dashboard-analytics?${params.toString()}`).then(r => r.json()),
     ])
-      .then(([scoresData, analyticsData, settingsData]) => {
-        setPeriod(scoresData.period)
+      .then(([scoresData, analyticsData]) => {
+        // period may be single object or array when multiple selected
+        if (Array.isArray(scoresData.period) && scoresData.period.length > 0) {
+          setPeriod(scoresData.period[0])
+        } else {
+          setPeriod(scoresData.period)
+        }
         setGAScores(scoresData.gaScores ?? [])
         setStats(scoresData.stats)
         setAnalytics(analyticsData)
-        if (settingsData && typeof settingsData.threshold === 'number') {
-          setThreshold(settingsData.threshold)
-        } else if (settingsData && settingsData.threshold) {
-          const parsed = parseFloat(String(settingsData.threshold))
+        if (typeof scoresData.threshold === 'number') {
+          setThreshold(scoresData.threshold)
+        } else if (scoresData.threshold) {
+          const parsed = parseFloat(String(scoresData.threshold))
           if (!Number.isNaN(parsed)) setThreshold(parsed)
         }
       })
@@ -124,7 +134,26 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    if (selectedPeriodIds.length > 0) {
+      fetchData()
+    }
+  }, [selectedPeriodIds])
+
+  // fetch available periods for selector
+  useEffect(() => {
+    fetch('/api/admin/periods')
+      .then(r => r.json())
+      .then((rows: Period[]) => {
+        setPeriods(rows)
+        // default select latest period (by startDate descending)
+        if (rows.length > 0) {
+          const latest = rows.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          setSelectedPeriodIds([latest.id])
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -132,9 +161,27 @@ export default function AdminDashboardPage() {
           {/* Page header */}
           <PageHeader
             title="Dashboard"
-            subtitle={period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
+            subtitle={
+              selectedPeriodIds.length === 0
+                ? (period ? `Periode: ${period.label}` : 'Tidak ada periode aktif')
+                : selectedPeriodIds.length === 1
+                  ? (period ? `Periode: ${period.label}` : 'Memuat...')
+                  : `Periode: ${selectedPeriodIds.length} terpilih`
+            }
             actions={<ActionButton onClick={fetchData} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
           />
+
+          {/* Period selector */}
+          <div className="flex items-center gap-3">
+            <label className="text-white/40 text-xs mr-2">Pilih Periode</label>
+            <div>
+              <PeriodSelector
+                periods={periods}
+                selected={selectedPeriodIds}
+                onChange={(ids) => setSelectedPeriodIds(ids)}
+              />
+            </div>
+          </div>
 
           {/* Stats — 2 col mobile, 4 col desktop */}
           {stats && (
@@ -142,8 +189,8 @@ export default function AdminDashboardPage() {
               {[
                 { label: 'Submission',        value: stats.totalSubmissions, sub: `dari ${stats.totalAssignments} penugasan`, color: 'text-blue-400' },
                 { label: 'GA Dinilai',        value: `${stats.gaScored}/${stats.gaTotal}`, sub: 'memiliki data skor', color: 'text-white' },
-                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: `min. ${threshold}%`, color: stats.gaBelow > 0 ? 'text-red-400' : 'text-emerald-400' },
-                { label: 'Threshold',         value: `${threshold}%`, sub: 'batas minimum', color: 'text-white/60' },
+                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: threshold === null ? 'memuat threshold' : `min. ${threshold}%`, color: stats.gaBelow > 0 ? 'text-red-400' : 'text-emerald-400' },
+                { label: 'Threshold',         value: threshold === null ? 'Memuat...' : `${threshold}%`, sub: threshold === null ? 'mengambil pengaturan' : 'batas minimum', color: 'text-white/60' },
               ].map(card => (
                 <div key={card.label} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
                   <p className="text-white/40 text-xs mb-1 truncate">{card.label}</p>
@@ -163,7 +210,7 @@ export default function AdminDashboardPage() {
               <div className="px-4 md:px-5 py-4 space-y-3">
                 {Object.entries(analytics.categoryAverages).map(([cat, score]) => {
                   const catLabel = CAT_SHORT[cat as keyof typeof CAT_SHORT] || cat
-                  const color = score < threshold ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
+                  const color = threshold !== null && score < threshold ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
                   return (
                     <div key={cat} className="flex items-center gap-3">
                       <span className="text-white/60 text-xs font-medium w-24 md:w-28 shrink-0">{catLabel}</span>
@@ -221,7 +268,7 @@ export default function AdminDashboardPage() {
                               <p className="text-white/40 text-xs truncate">PIC: {obj.gaName}</p>
                             </div>
                             <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                              obj.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                              threshold !== null && obj.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
                             }`}>
                               {obj.avgScore.toFixed(1)}
                             </span>
@@ -248,7 +295,7 @@ export default function AdminDashboardPage() {
                               </p>
                             </div>
                             <span className={`text-xs font-semibold px-2 py-1 rounded shrink-0 ${
-                              q.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                              threshold !== null && q.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
                             }`}>
                               {q.avgScore.toFixed(1)}
                             </span>

@@ -12,14 +12,17 @@ import {
 } from '@/lib/db/schema'
 import { eq, and, isNotNull, lte, sql } from 'drizzle-orm'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireRole('admin', 'superadmin')
 
-    // Get current active period
-    const currentPeriod = await db.query.evaluationPeriods.findFirst({
-      where: eq(evaluationPeriods.status, 'open'),
-    })
+    const url = new URL(request.url)
+    const periodIds = url.searchParams.getAll('periodId')
+
+    // Get current active period (or use first selected period)
+    const currentPeriod = periodIds.length === 0
+      ? await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.status, 'open') })
+      : await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.id, periodIds[0]) })
 
     if (!currentPeriod) {
       return NextResponse.json({
