@@ -1,6 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PageHeader from '@/components/admin/PageHeader'
+import ActionButton from '@/components/admin/ActionButton'
+import ScoreBar from '@/components/admin/ScoreBar'
+import StatusBadge from '@/components/admin/StatusBadge'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -47,39 +51,7 @@ const CAT_SHORT: Record<string, string> = {
   user_satisfaction:   'Kepuasan',
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-function ScoreBar({ value, isBelow }: { value: number | null; isBelow?: boolean }) {
-  if (value === null) {
-    return <span className="text-white/20 text-sm">Belum ada data</span>
-  }
-  const color = isBelow || value < 60
-    ? 'bg-red-500'
-    : value >= 80
-      ? 'bg-emerald-500'
-      : 'bg-amber-500'
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${value}%` }} />
-      </div>
-      <span className={`text-sm font-semibold tabular-nums w-10 text-right shrink-0 ${isBelow ? 'text-red-400' : 'text-white'}`}>
-        {value.toFixed(1)}
-      </span>
-    </div>
-  )
-}
-
-function StatusBadge({ isBelow, score }: { isBelow: boolean; score: number | null }) {
-  if (score === null) {
-    return <span className="text-xs bg-gray-500/15 text-gray-400 border border-gray-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">— Tidak ada data</span>
-  }
-  if (isBelow) {
-    return <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">⚠ Di bawah threshold</span>
-  }
-  return <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">✓ Memenuhi threshold</span>
-}
+ 
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
@@ -123,23 +95,11 @@ export default function GAStaffPage() {
     <div className="space-y-6">
       <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
       {/* Page header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-lg md:text-xl font-semibold">GA Staff</h1>
-          <p className="text-white/30 text-sm mt-0.5">
-            {period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
-          </p>
-        </div>
-        <button
-          onClick={() => fetchData()}
-          className="flex items-center gap-2 text-sm text-white/40 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.07] px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span className="hidden sm:inline">Refresh</span>
-        </button>
-      </div>
+      <PageHeader
+        title="GA Staff"
+        subtitle={period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
+        actions={<ActionButton onClick={() => fetchData()} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
+      />
 
       {/* Stats */}
       {gaStaff.length > 0 && (

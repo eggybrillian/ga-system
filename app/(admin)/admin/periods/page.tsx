@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PageHeader from '@/components/admin/PageHeader'
 
 type Period = {
   id:        string
@@ -90,22 +91,20 @@ export default function AdminPeriodsPage() {
   return (
     <div className="space-y-6">
       <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-lg md:text-xl font-semibold">Kelola Periode</h1>
-            <p className="text-white/30 text-sm mt-0.5">
-              Atur periode evaluasi yang sedang aktif maupun yang sudah selesai
-            </p>
-          </div>
-          <button onClick={openCreate}
-            className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="hidden sm:inline">Tambah Periode</span>
-            <span className="sm:hidden">Tambah</span>
-          </button>
-        </div>
+        <PageHeader
+          title="Kelola Periode"
+          subtitle="Atur periode evaluasi yang sedang aktif maupun yang sudah selesai"
+          actions={(
+            <button onClick={openCreate}
+              className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Tambah Periode</span>
+              <span className="sm:hidden">Tambah</span>
+            </button>
+          )}
+        />
         {loading ? (
           [1,2,3].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-xl animate-pulse" />)
         ) : periods.length === 0 ? (

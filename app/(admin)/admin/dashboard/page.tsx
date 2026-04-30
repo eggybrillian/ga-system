@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PageHeader from '@/components/admin/PageHeader'
+import ActionButton from '@/components/admin/ActionButton'
+import ScoreBar from '@/components/admin/ScoreBar'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -53,31 +56,11 @@ const CAT_SHORT: Record<string, string> = {
   user_satisfaction:   'Kepuasan',
 }
 
-const THRESHOLD = 60
+// default shown until settings are loaded
+// threshold will be loaded from settings table via API
+// (initial default kept for SSR/client hydration safety)
+// const THRESHOLD = 60
 
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-function ScoreBar({ value, isBelow }: { value: number | null; isBelow?: boolean }) {
-  if (value === null) {
-    return <span className="text-white/20 text-sm">Belum ada data</span>
-  }
-  const color = isBelow || value < THRESHOLD
-    ? 'bg-red-500'
-    : value >= 80
-      ? 'bg-emerald-500'
-      : 'bg-amber-500'
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${value}%` }} />
-      </div>
-      <span className={`text-sm font-semibold tabular-nums w-10 text-right shrink-0 ${isBelow ? 'text-red-400' : 'text-white'}`}>
-        {value.toFixed(1)}
-      </span>
-    </div>
-  )
-}
 
 
 // ── Main Page ──────────────────────────────────────────────────────────────
@@ -116,18 +99,26 @@ export default function AdminDashboardPage() {
   const [loading, setLoading]         = useState(true)
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [issuesTab, setIssuesTab]     = useState<'objects' | 'questions' | 'feedback'>('objects')
+  const [threshold, setThreshold]     = useState<number>(60)
 
   function fetchData() {
     setLoading(true)
     Promise.all([
       fetch('/api/admin/scores').then(r => r.json()),
       fetch('/api/admin/dashboard-analytics').then(r => r.json()),
+      fetch('/api/admin/settings').then(r => r.json()),
     ])
-      .then(([scoresData, analyticsData]) => {
+      .then(([scoresData, analyticsData, settingsData]) => {
         setPeriod(scoresData.period)
         setGAScores(scoresData.gaScores ?? [])
         setStats(scoresData.stats)
         setAnalytics(analyticsData)
+        if (settingsData && typeof settingsData.threshold === 'number') {
+          setThreshold(settingsData.threshold)
+        } else if (settingsData && settingsData.threshold) {
+          const parsed = parseFloat(String(settingsData.threshold))
+          if (!Number.isNaN(parsed)) setThreshold(parsed)
+        }
       })
       .catch(err => console.error('Error fetching data:', err))
       .finally(() => setLoading(false))
@@ -139,23 +130,11 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
           {/* Page header */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-lg md:text-xl font-semibold">Dashboard</h1>
-              <p className="text-white/30 text-sm mt-0.5">
-                {period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
-              </p>
-            </div>
-            <button
-              onClick={fetchData}
-              className="flex items-center gap-2 text-sm text-white/40 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.07] px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
+          <PageHeader
+            title="Dashboard"
+            subtitle={period ? `Periode: ${period.label}` : 'Tidak ada periode aktif'}
+            actions={<ActionButton onClick={fetchData} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
+          />
 
           {/* Stats — 2 col mobile, 4 col desktop */}
           {stats && (
@@ -163,8 +142,8 @@ export default function AdminDashboardPage() {
               {[
                 { label: 'Submission',        value: stats.totalSubmissions, sub: `dari ${stats.totalAssignments} penugasan`, color: 'text-blue-400' },
                 { label: 'GA Dinilai',        value: `${stats.gaScored}/${stats.gaTotal}`, sub: 'memiliki data skor', color: 'text-white' },
-                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: `min. ${THRESHOLD}%`, color: stats.gaBelow > 0 ? 'text-red-400' : 'text-emerald-400' },
-                { label: 'Threshold',         value: `${THRESHOLD}%`, sub: 'batas minimum', color: 'text-white/60' },
+                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: `min. ${threshold}%`, color: stats.gaBelow > 0 ? 'text-red-400' : 'text-emerald-400' },
+                { label: 'Threshold',         value: `${threshold}%`, sub: 'batas minimum', color: 'text-white/60' },
               ].map(card => (
                 <div key={card.label} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
                   <p className="text-white/40 text-xs mb-1 truncate">{card.label}</p>
@@ -184,7 +163,7 @@ export default function AdminDashboardPage() {
               <div className="px-4 md:px-5 py-4 space-y-3">
                 {Object.entries(analytics.categoryAverages).map(([cat, score]) => {
                   const catLabel = CAT_SHORT[cat as keyof typeof CAT_SHORT] || cat
-                  const color = score < 60 ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
+                  const color = score < threshold ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
                   return (
                     <div key={cat} className="flex items-center gap-3">
                       <span className="text-white/60 text-xs font-medium w-24 md:w-28 shrink-0">{catLabel}</span>
@@ -221,7 +200,7 @@ export default function AdminDashboardPage() {
                           : 'bg-white/[0.05] text-white/40 hover:bg-white/[0.08]'
                       }`}
                     >
-                      {tab.label} {tab.count > 0 && <span className="text-xs ml-1">({tab.count})</span>}
+                          {tab.label} {tab.count > 0 && <span className="text-xs ml-1">({tab.count})</span>}
                     </button>
                   ))}
                 </div>
@@ -242,7 +221,7 @@ export default function AdminDashboardPage() {
                               <p className="text-white/40 text-xs truncate">PIC: {obj.gaName}</p>
                             </div>
                             <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                              obj.avgScore < 60 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                              obj.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
                             }`}>
                               {obj.avgScore.toFixed(1)}
                             </span>
@@ -269,7 +248,7 @@ export default function AdminDashboardPage() {
                               </p>
                             </div>
                             <span className={`text-xs font-semibold px-2 py-1 rounded shrink-0 ${
-                              q.avgScore < 60 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                              q.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
                             }`}>
                               {q.avgScore.toFixed(1)}
                             </span>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PageHeader from '@/components/admin/PageHeader'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -130,12 +131,7 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-2xl">
       <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-lg md:text-xl font-semibold">Pengaturan</h1>
-        <p className="text-white/30 text-sm mt-0.5">
-          Konfigurasi sistem penilaian GA
-        </p>
-      </div>
+      <PageHeader title="Pengaturan" subtitle="Konfigurasi sistem penilaian GA" />
 
       {/* Alerts */}
       {error && (
