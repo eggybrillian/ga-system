@@ -30,6 +30,16 @@ const NAV_ITEMS = [
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ) },
+  { label: 'User', href: '/admin/users', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 8.048M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
+    </svg>
+  ) },
+  { label: 'Akses Admin', href: '/admin/admin-access', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ) },
   { label: 'Pengaturan', href: '/admin/settings', icon: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -38,7 +48,7 @@ const NAV_ITEMS = [
   ) },
 ]
 
-function Sidebar({ collapsed, onLogout }: { collapsed: boolean; onLogout: () => void }) {
+function Sidebar({ collapsed, onLogout, navItems }: { collapsed: boolean; onLogout: () => void; navItems: typeof NAV_ITEMS }) {
   const router = useRouter()
   const pathname = usePathname()
 
@@ -58,7 +68,7 @@ function Sidebar({ collapsed, onLogout }: { collapsed: boolean; onLogout: () => 
       </div>
 
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(item => {
+        {navItems.map(item => {
           const active = pathname === item.href
           return (
             <button
@@ -96,10 +106,10 @@ function Sidebar({ collapsed, onLogout }: { collapsed: boolean; onLogout: () => 
   )
 }
 
-function BottomNav({ onLogout }: { onLogout: () => void }) {
+function BottomNav({ onLogout, navItems }: { onLogout: () => void; navItems: typeof NAV_ITEMS }) {
   const router = useRouter()
   const pathname = usePathname()
-  const visible = NAV_ITEMS.slice(0, 4)
+  const visible = navItems.slice(0, 4)
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-[#0d1117]/95 backdrop-blur border-t border-white/[0.06]">
@@ -135,6 +145,7 @@ function BottomNav({ onLogout }: { onLogout: () => void }) {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
     function check() {
@@ -146,17 +157,33 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Fetch user role
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(session => setUserRole(session?.role || null))
+      .catch(() => setUserRole(null))
+  }, [])
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
   }
 
+  const filteredNavItems = NAV_ITEMS.filter(item => {
+    // Only show "Akses Admin" for superadmin
+    if (item.href === '/admin/admin-access' && userRole !== 'superadmin') {
+      return false
+    }
+    return true
+  })
+
   const sidebarWidth = sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-white">
-      <Sidebar collapsed={sidebarCollapsed} onLogout={handleLogout} />
-      <BottomNav onLogout={handleLogout} />
+      <Sidebar collapsed={sidebarCollapsed} onLogout={handleLogout} navItems={filteredNavItems} />
+      <BottomNav onLogout={handleLogout} navItems={filteredNavItems} />
 
       <main className={`${sidebarWidth} transition-all duration-300 p-4 md:p-6 pb-24 md:pb-6`}>
         <div className="max-w-5xl mx-auto">{children}</div>
