@@ -105,6 +105,7 @@ export default function AdminPeriodsPage() {
             </button>
           )}
         />
+        <div className="space-y-2">
         {loading ? (
           [1,2,3].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-xl animate-pulse" />)
         ) : periods.length === 0 ? (
@@ -152,6 +153,7 @@ export default function AdminPeriodsPage() {
             </div>
           )
         })}
+        </div>
       </main>
 
       {/* Create/Edit Modal */}

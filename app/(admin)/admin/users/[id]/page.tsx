@@ -162,7 +162,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           </div>
           <a
             href="/admin/users"
-            className="rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/[0.10] hover:text-white"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/[0.10] hover:text-white "
           >
             Kembali
           </a>

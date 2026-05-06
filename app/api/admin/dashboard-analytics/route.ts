@@ -10,7 +10,7 @@ import {
   objects,
   gaStaff,
 } from '@/lib/db/schema'
-import { eq, and, isNotNull, lte, sql } from 'drizzle-orm'
+import { eq, and, isNotNull, lte, sql, inArray } from 'drizzle-orm'
 
 export async function GET(request: Request) {
   try {
@@ -19,12 +19,18 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const periodIds = url.searchParams.getAll('periodId')
 
-    // Get current active period (or use first selected period)
-    const currentPeriod = periodIds.length === 0
-      ? await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.status, 'open') })
-      : await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.id, periodIds[0]) })
+    // Resolve period IDs: use provided ones or get active period
+    let resolvedPeriodIds: string[] = []
+    if (periodIds.length === 0) {
+      const activePeriod = await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.status, 'open') })
+      if (activePeriod) {
+        resolvedPeriodIds = [activePeriod.id]
+      }
+    } else {
+      resolvedPeriodIds = periodIds
+    }
 
-    if (!currentPeriod) {
+    if (resolvedPeriodIds.length === 0) {
       return NextResponse.json({
         topLowestObjects: [],
         topLowestQuestions: [],
@@ -52,7 +58,7 @@ export async function GET(request: Request) {
       )
       .where(
         and(
-          eq(evaluationForms.periodId, currentPeriod.id),
+          inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt)
         )
       )
@@ -86,7 +92,7 @@ export async function GET(request: Request) {
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
       .where(
         and(
-          eq(evaluationForms.periodId, currentPeriod.id),
+          inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt),
           eq(questions.isActive, true)
         )
@@ -120,7 +126,7 @@ export async function GET(request: Request) {
       .innerJoin(objects, eq(evaluationForms.objectId, objects.id))
       .where(
         and(
-          eq(evaluationForms.periodId, currentPeriod.id),
+          inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt),
           lte(evaluationScores.score, 2),
           isNotNull(evaluationScores.comment)
@@ -137,7 +143,7 @@ export async function GET(request: Request) {
       objectName: cf.objectName,
     }))
 
-    // 4. Category averages for current period
+    // 4. Category averages for selected periods
     const categoryAverages = await db
       .select({
         category: evaluationScores.category,
@@ -147,7 +153,7 @@ export async function GET(request: Request) {
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
       .where(
         and(
-          eq(evaluationForms.periodId, currentPeriod.id),
+          inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt)
         )
       )

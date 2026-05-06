@@ -102,12 +102,12 @@ export default function UsersPage() {
 
         {/* Users Grid/Table */}
         {!loading && users.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {users.map((user) => (
               <button
                 key={user.id}
                 onClick={() => router.push(`/admin/users/${user.id}`)}
-                className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4"
+                className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 transition-colors hover:bg-white/[0.10] hover:text-white"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">

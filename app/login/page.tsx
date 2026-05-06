@@ -48,17 +48,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0f1117] flex items-center justify-center p-4">
 
-      {/* Background grid */}
-      <div
-        className="fixed inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage: `
-            linear-gradient(#fff 1px, transparent 1px),
-            linear-gradient(90deg, #fff 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
+      {/* Background grid removed per request */}
 
       {/* Card */}
       <div className="relative w-full max-w-sm">
