@@ -38,7 +38,7 @@ export default function PeriodSelector({ periods, selected, onChange, compact }:
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-2 w-72 bg-[#0b0c10] border border-white/[0.06] rounded-lg shadow-lg p-3">
+        <div className="absolute z-40 mt-2 w-72 max-w-[calc(100vw-3rem)] right-0 bg-[#0b0c10] border border-white/[0.06] rounded-lg shadow-lg p-3">
           <div className="mb-2">
             <input
               value={query}

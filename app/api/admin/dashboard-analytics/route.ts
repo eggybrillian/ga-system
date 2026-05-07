@@ -11,6 +11,7 @@ import {
   gaStaff,
 } from '@/lib/db/schema'
 import { eq, and, isNotNull, lte, sql, inArray } from 'drizzle-orm'
+import { calcGAScoresForPeriodIds, getSettings } from '@/lib/scoring/calculator'
 
 export async function GET(request: Request) {
   try {
@@ -39,45 +40,44 @@ export async function GET(request: Request) {
       })
     }
 
-    // 1. Top 5 objects with lowest average scores
-    const objectScores = await db
+    const { threshold } = await getSettings()
+
+    // 1. Top 5 objects with lowest weighted scores, but only below threshold
+    const gaScores = await calcGAScoresForPeriodIds(resolvedPeriodIds, undefined, threshold)
+
+    const allObjects = gaScores.flatMap((ga) =>
+      ga.objectScores
+        .filter((obj) => obj.scores.final !== null)
+        .map((obj) => ({
+          objectId: obj.objectId,
+          objectName: obj.objectName,
+          objectType: obj.objectType,
+          gaName: ga.gaName,
+          avgScore100: ((obj.scores.final as number) / 5) * 100,
+          submissionCount: obj.submissionCount,
+        }))
+    )
+
+    const topLowestObjects = allObjects
+      .filter((item) => item.avgScore100 < threshold)
+      .sort((a, b) => a.avgScore100 - b.avgScore100)
+      .slice(0, 5)
+      .map((o) => ({
+        objectId: o.objectId,
+        objectName: o.objectName,
+        objectType: o.objectType,
+        gaName: o.gaName,
+        avgScore: Math.round(o.avgScore100 * 10) / 10,
+        submissionCount: o.submissionCount,
+      }))
+
+    // 2. Low questions grouped by object (avg score below 3 on 1-5 scale)
+    const questionScores = await db
       .select({
         objectId: objects.id,
         objectName: objects.name,
         objectType: objects.type,
         gaName: gaStaff.name,
-        avgScore: sql<number>`AVG(${evaluationScores.score})`,
-        submissionCount: sql<number>`COUNT(DISTINCT ${evaluationForms.id})`,
-      })
-      .from(objects)
-      .innerJoin(gaStaff, eq(objects.picGaId, gaStaff.id))
-      .innerJoin(evaluationForms, eq(objects.id, evaluationForms.objectId))
-      .innerJoin(
-        evaluationScores,
-        eq(evaluationForms.id, evaluationScores.formId)
-      )
-      .where(
-        and(
-          inArray(evaluationForms.periodId, resolvedPeriodIds),
-          isNotNull(evaluationForms.submittedAt)
-        )
-      )
-      .groupBy(objects.id, objects.name, objects.type, gaStaff.name)
-      .orderBy((t) => sql`AVG(${evaluationScores.score}) ASC`)
-      .limit(5)
-
-    const topLowestObjects = (objectScores as any).map((o: any) => ({
-      objectId: o.objectId,
-      objectName: o.objectName,
-      objectType: o.objectType,
-      gaName: o.gaName,
-      avgScore: o.avgScore ? Math.round((parseFloat(o.avgScore) / 5) * 1000) / 10 : 0,
-      submissionCount: o.submissionCount ? parseInt(o.submissionCount) : 0,
-    }))
-
-    // 2. Top 5 questions with lowest average scores
-    const questionScores = await db
-      .select({
         questionId: questions.id,
         questionText: questions.text,
         category: questions.category,
@@ -90,6 +90,8 @@ export async function GET(request: Request) {
         eq(questions.id, evaluationScores.questionId)
       )
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
+      .innerJoin(objects, eq(evaluationForms.objectId, objects.id))
+      .innerJoin(gaStaff, eq(objects.picGaId, gaStaff.id))
       .where(
         and(
           inArray(evaluationForms.periodId, resolvedPeriodIds),
@@ -97,17 +99,77 @@ export async function GET(request: Request) {
           eq(questions.isActive, true)
         )
       )
-      .groupBy(questions.id, questions.text, questions.category)
+      .groupBy(
+        objects.id,
+        objects.name,
+        objects.type,
+        gaStaff.name,
+        questions.id,
+        questions.text,
+        questions.category
+      )
       .orderBy((t) => sql`AVG(${evaluationScores.score}) ASC`)
-      .limit(5)
 
-    const topLowestQuestions = (questionScores as any).map((q: any) => ({
-      questionId: q.questionId,
-      questionText: q.questionText,
-      category: q.category,
-      avgScore: q.avgScore ? Math.round((parseFloat(q.avgScore) / 5) * 1000) / 10 : 0,
-      responseCount: q.responseCount ? parseInt(q.responseCount) : 0,
-    }))
+    const questionMap = new Map<string, {
+      objectId: string
+      objectName: string
+      objectType: string
+      gaName: string
+      questions: Array<{
+        questionId: string
+        questionText: string
+        category: string
+        avgScore: number
+        responseCount: number
+      }>
+      lowestScore: number
+    }>()
+
+    for (const row of questionScores as any) {
+      const avgScore = row.avgScore ? parseFloat(row.avgScore) : 0
+      if (avgScore >= 3) continue
+      const responseCount = row.responseCount ? parseInt(row.responseCount) : 0
+      const existing = questionMap.get(row.objectId)
+
+      if (!existing) {
+        questionMap.set(row.objectId, {
+          objectId: row.objectId,
+          objectName: row.objectName,
+          objectType: row.objectType,
+          gaName: row.gaName,
+          questions: [{
+            questionId: row.questionId,
+            questionText: row.questionText,
+            category: row.category,
+            avgScore,
+            responseCount,
+          }],
+          lowestScore: avgScore,
+        })
+      } else {
+        existing.questions.push({
+          questionId: row.questionId,
+          questionText: row.questionText,
+          category: row.category,
+          avgScore,
+          responseCount,
+        })
+        existing.lowestScore = Math.min(existing.lowestScore, avgScore)
+      }
+    }
+
+    const topLowestQuestions = Array.from(questionMap.values())
+      .sort((a, b) => a.lowestScore - b.lowestScore)
+      .slice(0, 5)
+      .map((item) => ({
+        objectId: item.objectId,
+        objectName: item.objectName,
+        objectType: item.objectType,
+        gaName: item.gaName,
+        questions: item.questions
+          .sort((a, b) => a.avgScore - b.avgScore)
+          .slice(0, 5),
+      }))
 
     // 3. Critical feedback (score ≤ 2)
     const criticalFeedback = await db
@@ -129,7 +191,8 @@ export async function GET(request: Request) {
           inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt),
           lte(evaluationScores.score, 2),
-          isNotNull(evaluationScores.comment)
+          isNotNull(evaluationScores.comment),
+          sql`trim(${evaluationScores.comment}) <> ''`
         )
       )
       .orderBy((t) => evaluationForms.createdAt)
@@ -143,26 +206,28 @@ export async function GET(request: Request) {
       objectName: cf.objectName,
     }))
 
-    // 4. Category averages for selected periods
-    const categoryAverages = await db
-      .select({
-        category: evaluationScores.category,
-        avgScore: sql<number>`AVG(${evaluationScores.score})`,
-      })
-      .from(evaluationScores)
-      .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
-      .where(
-        and(
-          inArray(evaluationForms.periodId, resolvedPeriodIds),
-          isNotNull(evaluationForms.submittedAt)
-        )
-      )
-      .groupBy(evaluationScores.category)
+    // 4. Category averages based on weighted object scores
+    const categoryBuckets: Record<string, number[]> = {
+      facility_quality: [],
+      service_performance: [],
+      user_satisfaction: [],
+    }
+
+    for (const ga of gaScores) {
+      for (const obj of ga.objectScores) {
+        if (obj.submissionCount === 0) continue
+        for (const [category, value] of Object.entries(obj.scores)) {
+          if (category === 'final' || value === null) continue
+          categoryBuckets[category]?.push(value)
+        }
+      }
+    }
 
     const categoryAvg: Record<string, number> = {}
-    for (const ca of categoryAverages as any) {
-      if (ca.avgScore) {
-        categoryAvg[ca.category] = Math.round((parseFloat(ca.avgScore) / 5) * 1000) / 10
+    for (const [category, values] of Object.entries(categoryBuckets)) {
+      if (values.length > 0) {
+        const avg = values.reduce((sum, value) => sum + value, 0) / values.length
+        categoryAvg[category] = Math.round((avg / 5) * 1000) / 10
       }
     }
 

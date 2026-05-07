@@ -19,18 +19,24 @@ type ModalMode = 'create' | 'edit' | 'assign-users' | null
 const TYPE_LABEL: Record<string, string> = {
   mess: 'Mess', office: 'Kantor', vehicle: 'Kendaraan', meeting_room: 'Ruang Meeting',
 }
-const TYPE_ICON: Record<string, string> = {
-  mess: '🏠', office: '🏢', vehicle: '🚐', meeting_room: '📋',
-}
 
 type ObjForm = { name: string; type: string; picGaId: string }
 const EMPTY_FORM: ObjForm = { name: '', type: 'office', picGaId: '' }
+
+const TYPE_FILTERS = [
+  { value: 'all', label: 'Semua' },
+  { value: 'mess', label: 'Mess' },
+  { value: 'office', label: 'Kantor' },
+  { value: 'vehicle', label: 'Kendaraan' },
+  { value: 'meeting_room', label: 'Ruang Meeting' },
+] as const
 
 export default function AdminObjectsPage() {
   const [items, setItems]       = useState<ObjectItem[]>([])
   const [gaList, setGAList]     = useState<GAStaff[]>([])
   const [userList, setUserList] = useState<User[]>([])
   const [loading, setLoading]   = useState(true)
+  const [filter, setFilter]     = useState<string>('all')
 
   const [modal, setModal]             = useState<ModalMode>(null)
   const [editing, setEditing]         = useState<ObjectItem | null>(null)
@@ -113,8 +119,12 @@ export default function AdminObjectsPage() {
     (u.department ?? '').toLowerCase().includes(userSearch.toLowerCase())
   )
 
+  const filteredItems = filter === 'all'
+    ? items
+    : items.filter(item => item.type === filter)
+
   const grouped = ['mess','office','vehicle','meeting_room'].reduce((acc, type) => {
-    const g = items.filter(i => i.type === type)
+    const g = filteredItems.filter(i => i.type === type)
     if (g.length) acc[type] = g
     return acc
   }, {} as Record<string, ObjectItem[]>)
@@ -133,14 +143,34 @@ export default function AdminObjectsPage() {
             </button>
           )}
         />
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {TYPE_FILTERS.map(t => (
+            <button
+              key={t.value}
+              onClick={() => setFilter(t.value)}
+              className={`text-sm px-3.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap
+                ${filter === t.value
+                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                  : 'border-white/[0.08] text-white/40 hover:text-white/60 hover:bg-white/[0.04]'}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-xl animate-pulse" />)}</div>
-        ) : items.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-10 text-center text-white/30 text-sm">Belum ada objek. Tambahkan objek pertama sekarang.</div>
         ) : Object.entries(grouped).map(([type, group]) => (
           <div key={type}>
-            <h2 className="text-white/40 text-xs uppercase tracking-widest mb-3">{TYPE_ICON[type]} {TYPE_LABEL[type]}</h2>
-            <div className="space-y-2.5">
+            <h2 className="text-sm font-medium text-white/60 uppercase tracking-wider flex items-center mb-3 gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              {TYPE_LABEL[type]}
+            </h2>
+            <div className="space-y-2">
               {group.map(obj => (
                 <div key={obj.id} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                   <div className="flex items-start gap-3">
@@ -193,7 +223,7 @@ export default function AdminObjectsPage() {
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                   className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                  {Object.entries(TYPE_LABEL).map(([val, lbl]) => <option key={val} value={val}>{TYPE_ICON[val]} {lbl}</option>)}
+                  {Object.entries(TYPE_LABEL).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
                 </select>
               </div>
               <div>

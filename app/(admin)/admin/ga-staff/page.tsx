@@ -129,7 +129,6 @@ export default function GAStaffPage() {
               ? (period ? `Periode: ${period.label}` : 'Memuat...')
               : `${selectedPeriodIds.length} terpilih`
         }
-        actions={<ActionButton onClick={() => fetchData()} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
       />
       {/* Period selector */}
       <div className="flex items-center gap-3">

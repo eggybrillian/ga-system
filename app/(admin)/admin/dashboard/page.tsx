@@ -76,11 +76,17 @@ type AnalyticsData = {
     submissionCount: number
   }>
   topLowestQuestions: Array<{
-    questionId: string
-    questionText: string
-    category: string
-    avgScore: number
-    responseCount: number
+    objectId: string
+    objectName: string
+    objectType: string
+    gaName: string
+    questions: Array<{
+      questionId: string
+      questionText: string
+      category: string
+      avgScore: number
+      responseCount: number
+    }>
   }>
   criticalFeedback: Array<{
     score: number
@@ -168,20 +174,17 @@ export default function AdminDashboardPage() {
                   ? (period ? `Periode: ${period.label}` : 'Memuat...')
                   : `Periode: ${selectedPeriodIds.length} terpilih`
             }
-            actions={<ActionButton onClick={fetchData} loading={loading}><span className="hidden sm:inline">Refresh</span></ActionButton>}
+            actions={(
+              <div className="flex items-center gap-3">
+                <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
+                <PeriodSelector
+                  periods={periods}
+                  selected={selectedPeriodIds}
+                  onChange={(ids) => setSelectedPeriodIds(ids)}
+                />
+              </div>
+            )}
           />
-
-          {/* Period selector */}
-          <div className="flex items-center gap-3">
-            <label className="text-white/40 text-xs mr-2">Pilih Periode</label>
-            <div>
-              <PeriodSelector
-                periods={periods}
-                selected={selectedPeriodIds}
-                onChange={(ids) => setSelectedPeriodIds(ids)}
-              />
-            </div>
-          </div>
 
           {/* Stats — 2 col mobile, 4 col desktop */}
           {stats && (
@@ -285,20 +288,33 @@ export default function AdminDashboardPage() {
                     {analytics.topLowestQuestions.length === 0 ? (
                       <p className="text-white/30 text-sm">Tidak ada data</p>
                     ) : (
-                      analytics.topLowestQuestions.map((q) => (
-                        <div key={q.questionId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
-                          <div className="flex items-start gap-2 mb-2">
+                      analytics.topLowestQuestions.map((item) => (
+                        <div key={item.objectId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-lg">{TYPE_ICON[item.objectType]}</span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-white break-words">{q.questionText}</p>
-                              <p className="text-white/40 text-xs mt-1">
-                                {CAT_SHORT[q.category as keyof typeof CAT_SHORT] || q.category} • {q.responseCount} respon
-                              </p>
+                              <p className="text-sm font-medium truncate text-white">{item.objectName}</p>
+                              <p className="text-white/40 text-xs truncate">PIC: {item.gaName}</p>
                             </div>
-                            <span className={`text-xs font-semibold px-2 py-1 rounded shrink-0 ${
-                              threshold !== null && q.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
-                            }`}>
-                              {q.avgScore.toFixed(1)}
+                            <span className="text-xs text-white/20 shrink-0">
+                              {item.questions.length} pertanyaan rendah
                             </span>
+                          </div>
+
+                          <div className="space-y-2 pl-0 sm:pl-6">
+                            {item.questions.map((q) => (
+                              <div key={q.questionId} className="flex items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-white break-words">{q.questionText}</p>
+                                  <p className="text-white/40 text-xs mt-1">
+                                    {CAT_SHORT[q.category as keyof typeof CAT_SHORT] || q.category} • {q.responseCount} respon
+                                  </p>
+                                </div>
+                                <span className="text-xs font-semibold px-2 py-1 rounded shrink-0 bg-red-500/20 text-red-400">
+                                  {q.avgScore}/5
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))

@@ -188,7 +188,6 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </section>
 
         <section className="rounded-2xl border border-white/[0.08] bg-[#161b27] p-4">
-          <div className="mb-2 text-sm text-white/40">Menampilkan form berdasarkan periode yang dipilih.</div>
           <PeriodFilterSelect
             userId={id}
             periods={groupedPeriods.map(period => ({ id: period.id, label: period.label }))}
