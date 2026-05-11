@@ -152,19 +152,20 @@ export default function AdminReportsPage() {
                 ? (selectedPeriods[0] ? `Periode: ${selectedPeriods[0].label}` : 'Memuat...')
                 : `Periode: ${selectedPeriodIds.length} terpilih`
           }
+          actions={(
+            <div className="flex items-center gap-3">
+              <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
+              <PeriodSelector
+                periods={periods}
+                selected={selectedPeriodIds}
+                onChange={setSelectedPeriodIds}
+              />
+            </div>
+          )}
         />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-4 flex-1">
-          <div>
-            <label className="block text-white/40 text-xs mb-2">Pilih Periode</label>
-            <PeriodSelector
-              periods={periods}
-              selected={selectedPeriodIds}
-              onChange={setSelectedPeriodIds}
-            />
-          </div>
-
           <p className="text-white/20 text-xs leading-relaxed">
             Gunakan pemilih periode untuk melihat satu atau beberapa periode sekaligus.
           </p>
@@ -179,7 +180,7 @@ export default function AdminReportsPage() {
             {loading ? 'Memuat...' : 'Muat Data'}
           </button>
           <button
-            className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50"
             onClick={handleExport}
             disabled={selectedPeriodIds.length === 0 || exporting !== null}
           >

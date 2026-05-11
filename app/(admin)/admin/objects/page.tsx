@@ -21,7 +21,7 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 type ObjForm = { name: string; type: string; picGaId: string }
-const EMPTY_FORM: ObjForm = { name: '', type: 'office', picGaId: '' }
+const EMPTY_FORM: ObjForm = { name: '', type: '', picGaId: '' }
 
 const TYPE_FILTERS = [
   { value: 'all', label: 'Semua' },
@@ -48,6 +48,7 @@ export default function AdminObjectsPage() {
   const [error, setError]         = useState('')
   const [deleteId, setDeleteId]   = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  const [activeSelect, setActiveSelect] = useState<string | null>(null)
 
   async function loadAll() {
     setLoading(true)
@@ -136,7 +137,7 @@ export default function AdminObjectsPage() {
           title="Kelola Objek"
           subtitle="Atur fasilitas, PIC GA, dan daftar user penilai untuk setiap objek"
           actions={(
-            <button onClick={openCreate} className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+            <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               <span className="hidden sm:inline">Tambah Objek</span>
               <span className="sm:hidden">Tambah</span>
@@ -221,24 +222,45 @@ export default function AdminObjectsPage() {
               </div>
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe</label>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                  className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                  {Object.entries(TYPE_LABEL).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
-                </select>
+                <div className="relative">
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                    onFocus={() => setActiveSelect('type')}
+                    onMouseDown={() => setActiveSelect(prev => prev === 'type' ? null : 'type')}
+                    onBlur={() => setActiveSelect(null)}
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                    <option value="" className="text-white/30">— Pilih Tipe —</option>
+                    {Object.entries(TYPE_LABEL).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+                  </select>
+                  <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-transform duration-150 ${activeSelect === 'type' ? 'rotate-180' : ''}`}>
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                    </svg>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">PIC GA Staff</label>
-                <select value={form.picGaId} onChange={e => setForm(f => ({ ...f, picGaId: e.target.value }))}
-                  className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                  <option value="">— Pilih GA Staff —</option>
-                  {gaList.map(g => <option key={g.id} value={g.id}>{g.name} ({g.nik})</option>)}
-                </select>
+                <div className="relative">
+                  <select value={form.picGaId} onChange={e => setForm(f => ({ ...f, picGaId: e.target.value }))}
+                    onFocus={() => setActiveSelect('picGaId')}
+                    onMouseDown={() => setActiveSelect(prev => prev === 'picGaId' ? null : 'picGaId')}
+                    onBlur={() => setActiveSelect(null)}
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                    <option value="" className="text-white/30">— Pilih GA Staff —</option>
+                    {gaList.map(g => <option key={g.id} value={g.id}>{g.name} ({g.nik})</option>)}
+                  </select>
+                  <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-transform duration-150 ${activeSelect === 'picGaId' ? 'rotate-180' : ''}`}>
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+              <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.type} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>
@@ -282,7 +304,7 @@ export default function AdminObjectsPage() {
               {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
               <div className="flex gap-3">
                 <button onClick={() => { setModal(null); setError('') }} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-                <button onClick={handleAssignUsers} disabled={saving} className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+                <button onClick={handleAssignUsers} disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
                   {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
@@ -296,8 +318,8 @@ export default function AdminObjectsPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div>
-              <h3 className="font-semibold">Hapus Objek?</h3>
-              <p className="text-white/40 text-sm mt-1">Objek yang memiliki data evaluasi akan di-nonaktifkan (soft delete), bukan dihapus permanen.</p>
+              <h3 className="font-semibold">Hapus Objek</h3>
+              <p className="text-white/40 text-sm mt-1">Yakin menghapus objek ini?</p>
             </div>
             {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
             <div className="flex gap-3">

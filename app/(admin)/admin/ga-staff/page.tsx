@@ -129,18 +129,17 @@ export default function GAStaffPage() {
               ? (period ? `Periode: ${period.label}` : 'Memuat...')
               : `${selectedPeriodIds.length} terpilih`
         }
+        actions={(
+          <div className="flex items-center gap-3">
+            <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
+            <PeriodSelector
+              periods={periods}
+              selected={selectedPeriodIds}
+              onChange={(ids) => setSelectedPeriodIds(ids)}
+            />
+          </div>
+        )}
       />
-      {/* Period selector */}
-      <div className="flex items-center gap-3">
-        <label className="text-white/40 text-xs mr-2">Pilih Periode</label>
-        <div>
-          <PeriodSelector
-            periods={periods}
-            selected={selectedPeriodIds}
-            onChange={(ids) => setSelectedPeriodIds(ids)}
-          />
-        </div>
-      </div>
 
       {/* Stats */}
       {gaStaff.length > 0 && (

@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { questions, objects, objectUserAssignments } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { normalizeQuestionWeight } from '@/lib/questions/weights'
 
 export async function GET(
   _req: NextRequest,
@@ -46,7 +47,18 @@ export async function GET(
       grouped[q.category].push(q)
     }
 
-    return NextResponse.json({ object, grouped })
+    return NextResponse.json({
+      object,
+      grouped: Object.fromEntries(
+        Object.entries(grouped).map(([category, items]) => [
+          category,
+          items.map((item) => ({
+            ...item,
+            weight: normalizeQuestionWeight(item.weight) ?? item.weight,
+          })),
+        ])
+      ),
+    })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

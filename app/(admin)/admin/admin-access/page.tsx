@@ -230,7 +230,7 @@ export default function AdminAccessPage() {
           actions={(
             <button
               onClick={handleOpenModal}
-              className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -405,7 +405,7 @@ export default function AdminAccessPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium py-2 disabled:opacity-50 transition-colors">
+                  className="flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 disabled:opacity-50 transition-colors">
                   {isSubmitting ? '⏳ Menyimpan...' : '✓ Simpan'}
                 </button>
                 <button
@@ -434,7 +434,7 @@ export default function AdminAccessPage() {
             <div className="flex gap-2 pt-2">
               <button
                 onClick={confirmToggleStatus}
-                className="flex-1 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium py-2 transition-colors">
+                className="flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 transition-colors">
                 Ya, {confirmModal.flag.isActive ? 'Nonaktifkan' : 'Aktifkan'}
               </button>
               <button

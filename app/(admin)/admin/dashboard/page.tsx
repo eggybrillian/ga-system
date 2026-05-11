@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import PeriodSelector from '@/components/admin/PeriodSelector'
 import PageHeader from '@/components/admin/PageHeader'
-import ActionButton from '@/components/admin/ActionButton'
 import ScoreBar from '@/components/admin/ScoreBar'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -47,14 +46,15 @@ type Stats = {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const TYPE_ICON: Record<string, string> = {
-  mess: '🏠', office: '🏢', vehicle: '🚐', meeting_room: '📋',
-}
-
 const CAT_SHORT: Record<string, string> = {
   facility_quality:    'Fasilitas',
   service_performance: 'Layanan',
   user_satisfaction:   'Kepuasan',
+}
+
+function toPercent(score: number | null | undefined) {
+  if (score === null || score === undefined) return null
+  return Math.round((score / 5) * 1000) / 10
 }
 
 // default shown until settings are loaded
@@ -68,6 +68,8 @@ const CAT_SHORT: Record<string, string> = {
 
 type AnalyticsData = {
   topLowestObjects: Array<{
+    periodId: string
+    periodLabel: string
     objectId: string
     objectName: string
     objectType: string
@@ -81,14 +83,21 @@ type AnalyticsData = {
     objectType: string
     gaName: string
     questions: Array<{
+      groupKey: string
+      periodId: string
+      periodLabel: string
       questionId: string
       questionText: string
       category: string
-      avgScore: number
+      score: number
       responseCount: number
     }>
   }>
   criticalFeedback: Array<{
+    scoreId: string
+    periodId: string
+    periodLabel: string
+    gaName: string
     score: number
     category: string
     comment: string | null
@@ -108,41 +117,61 @@ export default function AdminDashboardPage() {
   const [loading, setLoading]         = useState(true)
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [issuesTab, setIssuesTab]     = useState<'objects' | 'questions' | 'feedback'>('objects')
+  const [expandedQuestionObjectId, setExpandedQuestionObjectId] = useState<string | null>(null)
   const [threshold, setThreshold]     = useState<number | null>(null)
 
-  function fetchData() {
-    setLoading(true)
-    const params = new URLSearchParams()
-    for (const id of selectedPeriodIds) params.append('periodId', id)
-
-    Promise.all([
-      fetch(`/api/admin/scores?${params.toString()}`).then(r => r.json()),
-      fetch(`/api/admin/dashboard-analytics?${params.toString()}`).then(r => r.json()),
-    ])
-      .then(([scoresData, analyticsData]) => {
-        // period may be single object or array when multiple selected
-        if (Array.isArray(scoresData.period) && scoresData.period.length > 0) {
-          setPeriod(scoresData.period[0])
-        } else {
-          setPeriod(scoresData.period)
-        }
-        setGAScores(scoresData.gaScores ?? [])
-        setStats(scoresData.stats)
-        setAnalytics(analyticsData)
-        if (typeof scoresData.threshold === 'number') {
-          setThreshold(scoresData.threshold)
-        } else if (scoresData.threshold) {
-          const parsed = parseFloat(String(scoresData.threshold))
-          if (!Number.isNaN(parsed)) setThreshold(parsed)
-        }
-      })
-      .catch(err => console.error('Error fetching data:', err))
-      .finally(() => setLoading(false))
-  }
+  // sorted list for ranking (highest finalScore first)
+  const sortedGAScores = [...gaScores].slice().sort((a, b) => {
+    const aa = a.finalScore ?? -Infinity
+    const bb = b.finalScore ?? -Infinity
+    return bb - aa
+  })
 
   useEffect(() => {
     if (selectedPeriodIds.length > 0) {
-      fetchData()
+      let cancelled = false
+
+      void (async () => {
+        await Promise.resolve()
+        if (cancelled) return
+
+        setLoading(true)
+        const params = new URLSearchParams()
+        for (const id of selectedPeriodIds) params.append('periodId', id)
+
+        try {
+          const [scoresResponse, analyticsResponse] = await Promise.all([
+            fetch(`/api/admin/scores?${params.toString()}`).then(r => r.json()),
+            fetch(`/api/admin/dashboard-analytics?${params.toString()}`).then(r => r.json()),
+          ])
+
+          if (cancelled) return
+
+          // period may be single object or array when multiple selected
+          if (Array.isArray(scoresResponse.period) && scoresResponse.period.length > 0) {
+            setPeriod(scoresResponse.period[0])
+          } else {
+            setPeriod(scoresResponse.period)
+          }
+          setGAScores(scoresResponse.gaScores ?? [])
+          setStats(scoresResponse.stats)
+          setAnalytics(analyticsResponse)
+          if (typeof scoresResponse.threshold === 'number') {
+            setThreshold(scoresResponse.threshold)
+          } else if (scoresResponse.threshold) {
+            const parsed = parseFloat(String(scoresResponse.threshold))
+            if (!Number.isNaN(parsed)) setThreshold(parsed)
+          }
+        } catch (err) {
+          console.error('Error fetching data:', err)
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      })()
+
+      return () => {
+        cancelled = true
+      }
     }
   }, [selectedPeriodIds])
 
@@ -190,10 +219,10 @@ export default function AdminDashboardPage() {
           {stats && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Submission',        value: stats.totalSubmissions, sub: `dari ${stats.totalAssignments} penugasan`, color: 'text-blue-400' },
+                { label: 'Submission',        value: stats.totalSubmissions, sub: `dari ${stats.totalAssignments} penugasan`},
                 { label: 'GA Dinilai',        value: `${stats.gaScored}/${stats.gaTotal}`, sub: 'memiliki data skor', color: 'text-white' },
-                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: threshold === null ? 'memuat threshold' : `min. ${threshold}%`, color: stats.gaBelow > 0 ? 'text-red-400' : 'text-emerald-400' },
-                { label: 'Threshold',         value: threshold === null ? 'Memuat...' : `${threshold}%`, sub: threshold === null ? 'mengambil pengaturan' : 'batas minimum', color: 'text-white/60' },
+                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: threshold === null ? 'memuat threshold' : `min. ${threshold}%`},
+                { label: 'Threshold',         value: threshold === null ? 'Memuat...' : `${threshold}%`, sub: threshold === null ? 'mengambil pengaturan' : 'batas minimum', color: 'text-white' },
               ].map(card => (
                 <div key={card.label} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
                   <p className="text-white/40 text-xs mb-1 truncate">{card.label}</p>
@@ -201,32 +230,6 @@ export default function AdminDashboardPage() {
                   <p className="text-white/20 text-xs mt-1 truncate">{card.sub}</p>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Category Performance Trend */}
-          {analytics && Object.keys(analytics.categoryAverages).length > 0 && (
-            <div className="bg-[#161b27] border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
-              <div className="px-4 md:px-5 py-4 border-b border-white/[0.06]">
-                <h2 className="font-medium text-sm">Performa Kategori</h2>
-              </div>
-              <div className="px-4 md:px-5 py-4 space-y-3">
-                {Object.entries(analytics.categoryAverages).map(([cat, score]) => {
-                  const catLabel = CAT_SHORT[cat as keyof typeof CAT_SHORT] || cat
-                  const color = threshold !== null && score < threshold ? 'bg-red-500' : score >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
-                  return (
-                    <div key={cat} className="flex items-center gap-3">
-                      <span className="text-white/60 text-xs font-medium w-24 md:w-28 shrink-0">{catLabel}</span>
-                      <div className="flex-1">
-                        <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
-                          <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${score}%` }} />
-                        </div>
-                      </div>
-                      <span className="text-sm font-semibold text-white w-10 text-right shrink-0">{score.toFixed(1)}</span>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           )}
 
@@ -258,25 +261,32 @@ export default function AdminDashboardPage() {
 
               <div className="px-4 md:px-5 py-4">
                 {issuesTab === 'objects' && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {analytics.topLowestObjects.length === 0 ? (
                       <p className="text-white/30 text-sm">Tidak ada data</p>
                     ) : (
-                      analytics.topLowestObjects.map((obj, idx) => (
-                        <div key={obj.objectId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">{TYPE_ICON[obj.objectType]}</span>
+                      analytics.topLowestObjects.map((obj) => (
+                        <div key={`${obj.periodId}:${obj.objectId}`} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3 hover:border-white/[0.12] transition-colors">
+                          <div className="flex items-start gap-3 justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{obj.objectName}</p>
-                              <p className="text-white/40 text-xs truncate">PIC: {obj.gaName}</p>
+                              <p className="text-sm font-medium text-white break-words">{obj.objectName}</p>
+                              <div className="flex gap-3 mt-2 text-xs text-white/40">
+                                <span className="inline-flex items-center gap-1">
+                                  👤 {obj.gaName}
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  📋 {obj.submissionCount} evaluasi
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  🗓 {obj.periodLabel}
+                                </span>
+                              </div>
                             </div>
-                            <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                              threshold !== null && obj.avgScore < threshold ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
-                            }`}>
-                              {obj.avgScore.toFixed(1)}
-                            </span>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className="text-xl font-bold text-red-400">{obj.avgScore.toFixed(1)}</span>
+                              <span className="text-xs text-white/40">rata-rata</span>
+                            </div>
                           </div>
-                          <p className="text-white/40 text-xs">{obj.submissionCount} evaluasi</p>
                         </div>
                       ))
                     )}
@@ -284,38 +294,67 @@ export default function AdminDashboardPage() {
                 )}
 
                 {issuesTab === 'questions' && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {analytics.topLowestQuestions.length === 0 ? (
                       <p className="text-white/30 text-sm">Tidak ada data</p>
                     ) : (
                       analytics.topLowestQuestions.map((item) => (
-                        <div key={item.objectId} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">{TYPE_ICON[item.objectType]}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate text-white">{item.objectName}</p>
-                              <p className="text-white/40 text-xs truncate">PIC: {item.gaName}</p>
-                            </div>
-                            <span className="text-xs text-white/20 shrink-0">
-                              {item.questions.length} pertanyaan rendah
-                            </span>
-                          </div>
-
-                          <div className="space-y-2 pl-0 sm:pl-6">
-                            {item.questions.map((q) => (
-                              <div key={q.questionId} className="flex items-start gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-white break-words">{q.questionText}</p>
-                                  <p className="text-white/40 text-xs mt-1">
-                                    {CAT_SHORT[q.category as keyof typeof CAT_SHORT] || q.category} • {q.responseCount} respon
-                                  </p>
-                                </div>
-                                <span className="text-xs font-semibold px-2 py-1 rounded shrink-0 bg-red-500/20 text-red-400">
-                                  {q.avgScore}/5
-                                </span>
+                        <div key={item.objectId} className="space-y-3">
+                          {/* Object header */}
+                          <button
+                            onClick={() => setExpandedQuestionObjectId(expandedQuestionObjectId === item.objectId ? null : item.objectId)}
+                            className="w-full px-3 py-2.5 bg-[#161b27]/50 border border-white/[0.06] rounded-lg text-left hover:border-white/[0.12] transition-colors"
+                          >
+                            <div className="flex items-center gap-2 justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-white truncate">{item.objectName}</p>
+                                <p className="text-white/30 text-xs mt-0.5">PIC: {item.gaName}</p>
                               </div>
-                            ))}
-                          </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-white/30 whitespace-nowrap">
+                                  {item.questions.reduce((sum, q) => sum + q.responseCount, 0)} total respons
+                                </span>
+                                <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/20 rounded-full px-2 py-1 shrink-0 whitespace-nowrap">
+                                  {item.questions.length} pertanyaan rendah
+                                </span>
+                                <svg
+                                  className={`w-4 h-4 text-white/30 shrink-0 transition-transform ${expandedQuestionObjectId === item.objectId ? 'rotate-180' : ''}`}
+                                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Questions list */}
+                          {expandedQuestionObjectId === item.objectId && (
+                            <div className="space-y-2 pl-2">
+                              {item.questions.map((q) => (
+                                <div key={q.groupKey} className="bg-[#0f1117] border border-white/[0.06] rounded-lg p-3 hover:border-white/[0.12] transition-colors">
+                                  <div className="flex items-start gap-3 justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-white break-words">{q.questionText}</p>
+                                      <div className="flex gap-3 mt-2 text-xs text-white/40">
+                                        <span className="inline-flex items-center gap-1">
+                                          📊 {CAT_SHORT[q.category as keyof typeof CAT_SHORT] || q.category}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1">
+                                          💬 {q.responseCount} respon
+                                        </span>
+                                        <span className="inline-flex items-center gap-1">
+                                          🗓 {q.periodLabel}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                      <span className="text-xl font-bold text-red-400">{q.score}/5</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -323,21 +362,32 @@ export default function AdminDashboardPage() {
                 )}
 
                 {issuesTab === 'feedback' && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {analytics.criticalFeedback.length === 0 ? (
                       <p className="text-white/30 text-sm">Tidak ada feedback kritis</p>
                     ) : (
-                      analytics.criticalFeedback.map((fb, idx) => (
-                        <div key={idx} className="bg-[#0f1117] border border-red-500/20 rounded-lg p-3">
-                          <div className="flex items-start gap-2 mb-2">
+                      analytics.criticalFeedback.map((fb) => (
+                        <div key={fb.scoreId} className="bg-[#0f1117] border border-red-500/20 rounded-lg p-3 hover:border-red-500/40 transition-colors">
+                          <div className="flex items-start gap-3 justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-red-400 font-semibold mb-1">
-                                ⚠ Skor {fb.score}/5 • {fb.objectName}
-                              </p>
-                              <p className="text-white/60 text-xs mb-1">{fb.questionText}</p>
+                              <p className="text-sm font-medium text-white break-words">{fb.questionText}</p>
+                              <div className="flex gap-3 mt-2 text-xs text-white/40">
+                                <span className="inline-flex items-center gap-1">
+                                  📋 {fb.objectName}
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  👤 {fb.gaName}
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  🗓 {fb.periodLabel}
+                                </span>
+                              </div>
                               {fb.comment && (
-                                <p className="text-sm text-white/80 italic break-words">"{fb.comment}"</p>
+                                <p className="text-xs text-white/60 italic mt-2 break-words">&quot;{fb.comment}&quot;</p>
                               )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className="text-xl font-bold text-red-400">{fb.score}/5</span>
                             </div>
                           </div>
                         </div>
@@ -376,7 +426,14 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               <div className="divide-y divide-white/[0.04]">
-                {gaScores.map((ga, idx) => (
+                {sortedGAScores.map((ga, idx) => {
+                  const scoreThreshold = threshold ?? 60
+                  const objectBelowCount = ga.objectScores.reduce((acc, obj) => {
+                    const percent = toPercent(obj.scores.final)
+                    return percent !== null && percent < scoreThreshold ? acc + 1 : acc
+                  }, 0)
+
+                  return (
                   <div key={ga.gaId}>
                     {/* GA row */}
                     <button
@@ -385,10 +442,19 @@ export default function AdminDashboardPage() {
                     >
                       <div className="flex items-center gap-3 md:gap-4">
                         {/* Rank */}
-                        <span className={`text-sm font-semibold w-5 text-center tabular-nums shrink-0
-                          ${idx === 0 && ga.finalScore !== null ? 'text-amber-400' : 'text-white/20'}`}>
-                          {ga.finalScore !== null ? idx + 1 : '—'}
-                        </span>
+                        {
+                          (() => {
+                            const hasScore = ga.finalScore !== null
+                            const rankNum = hasScore ? idx + 1 : null
+                            const rankClass = hasScore ? 'text-white' : 'text-white/20'
+
+                            return (
+                              <span className={`text-sm font-semibold w-5 text-center tabular-nums shrink-0 ${rankClass}`}>
+                                {rankNum ?? '—'}
+                              </span>
+                            )
+                          })()
+                        }
 
                         {/* Name + badge */}
                         <div className="flex-1 min-w-0">
@@ -402,6 +468,9 @@ export default function AdminDashboardPage() {
                           </div>
                           <p className="text-white/30 text-xs mt-0.5 truncate">
                             {ga.gaNik} · {ga.objectScores.length} objek
+                            {objectBelowCount > 0 && (
+                              <span className="text-red-400"> · {objectBelowCount} objek di bawah threshold</span>
+                            )}
                           </p>
                         </div>
 
@@ -438,53 +507,37 @@ export default function AdminDashboardPage() {
 
                     {/* Expanded detail */}
                     {expanded === ga.gaId && (
-                      <div className="bg-[#0f1117] px-4 md:px-5 py-4 space-y-3">
+                      <div className="bg-[#0f1117] px-4 md:px-5 py-4">
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {ga.objectScores.map(obj => (
-                          <div key={obj.objectId} className="bg-[#161b27] border border-white/[0.06] rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <span>{TYPE_ICON[obj.objectType]}</span>
-                              <p className="text-sm font-medium flex-1 truncate">{obj.objectName}</p>
-                              <span className="text-white/20 text-xs shrink-0">
-                                {obj.submissionCount} evaluasi
-                              </span>
-                            </div>
+                          (() => {
+                            const percent = toPercent(obj.scores.final)
+                            const scoreThreshold = threshold ?? 60
+                            const isBelow = percent !== null ? percent < scoreThreshold : false
 
-                            {obj.submissionCount === 0 ? (
-                              <p className="text-white/20 text-xs">Belum ada evaluasi</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {Object.entries(CAT_SHORT).map(([cat, label]) => {
-                                  const raw  = obj.scores[cat as keyof typeof obj.scores]
-                                  const val100 = raw !== null && raw !== undefined
-                                    ? Math.round((raw / 5) * 1000) / 10
-                                    : null
-                                  return (
-                                    <div key={cat} className="flex items-center gap-2 md:gap-3">
-                                      <span className="text-white/30 text-xs w-16 md:w-20 shrink-0">{label}</span>
-                                      <div className="flex-1">
-                                        <ScoreBar value={val100} />
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                                <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 md:gap-3">
-                                  <span className="text-white/50 text-xs w-16 md:w-20 shrink-0 font-medium">Final</span>
-                                  <div className="flex-1">
-                                    <ScoreBar
-                                      value={obj.scores.final !== null && obj.scores.final !== undefined
-                                        ? Math.round((obj.scores.final / 5) * 1000) / 10
-                                        : null}
-                                    />
-                                  </div>
+                            return (
+                              <div key={obj.objectId} className="rounded-lg border border-white/[0.06] bg-[#161b27] p-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{obj.objectName}</p>
+                                  <p className="text-xs text-white/30 mt-0.5 truncate">
+                                    {obj.objectType} · {obj.submissionCount} evaluasi
+                                  </p>
+                                </div>
+                                <div className="mt-2">
+                                  <ScoreBar
+                                    value={percent}
+                                    isBelow={isBelow}
+                                  />
                                 </div>
                               </div>
-                            )}
-                          </div>
+                            )
+                          })()
                         ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>

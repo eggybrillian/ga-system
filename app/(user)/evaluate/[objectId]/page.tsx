@@ -298,7 +298,7 @@ export default function EvaluateFormPage() {
           <button
             onClick={() => setShowConfirm(true)}
             disabled={!isComplete}
-            className="w-full bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium rounded-xl py-3 transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium rounded-xl py-3 transition-colors"
           >
             {isComplete
               ? 'Submit Evaluasi'
@@ -333,7 +333,7 @@ export default function EvaluateFormPage() {
               <button
                 onClick={submitEvaluation}
                 disabled={submitting}
-                className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
               >
                 {submitting ? 'Mengsubmit...' : 'Ya, Submit'}
               </button>

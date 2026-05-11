@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { questions, evaluationScores } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { normalizeQuestionWeight } from '@/lib/questions/weights'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -23,7 +24,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.objectType !== undefined) updateData.objectType = body.objectType
     if (body.category !== undefined)   updateData.category   = body.category
     if (body.text !== undefined)       updateData.text       = body.text.trim()
-    if (body.weight !== undefined)     updateData.weight     = body.weight
+    if (body.weight !== undefined) {
+      const normalizedWeight = normalizeQuestionWeight(body.weight)
+      if (!normalizedWeight) {
+        return NextResponse.json({ error: 'Bobot pertanyaan harus salah satu dari 1, 1.5, atau 2' }, { status: 400 })
+      }
+      updateData.weight = normalizedWeight
+    }
     if (body.isActive !== undefined)   updateData.isActive   = body.isActive
     if (body.sortOrder !== undefined)  updateData.sortOrder  = body.sortOrder
 
@@ -33,7 +40,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .where(eq(questions.id, id))
       .returning()
 
-    return NextResponse.json(updated)
+    return NextResponse.json({
+      ...updated,
+      weight: normalizeQuestionWeight(updated.weight) ?? updated.weight,
+    })
   } catch {
     return NextResponse.json({ error: 'Gagal mengupdate pertanyaan' }, { status: 500 })
   }

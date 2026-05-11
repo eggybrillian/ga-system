@@ -11,7 +11,7 @@ import {
   gaStaff,
 } from '@/lib/db/schema'
 import { eq, and, isNotNull, lte, sql, inArray } from 'drizzle-orm'
-import { calcGAScoresForPeriodIds, getSettings } from '@/lib/scoring/calculator'
+import { calcGAScores, calcGAScoresForPeriodIds, getSettings } from '@/lib/scoring/calculator'
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +31,13 @@ export async function GET(request: Request) {
       resolvedPeriodIds = periodIds
     }
 
+    const periodRows = resolvedPeriodIds.length > 0
+      ? await db.query.evaluationPeriods.findMany({
+          where: (q, { inArray }) => inArray(q.id, resolvedPeriodIds),
+        })
+      : []
+    const periodMap = new Map(periodRows.map((period) => [period.id, period]))
+
     if (resolvedPeriodIds.length === 0) {
       return NextResponse.json({
         topLowestObjects: [],
@@ -45,24 +52,37 @@ export async function GET(request: Request) {
     // 1. Top 5 objects with lowest weighted scores, but only below threshold
     const gaScores = await calcGAScoresForPeriodIds(resolvedPeriodIds, undefined, threshold)
 
-    const allObjects = gaScores.flatMap((ga) =>
-      ga.objectScores
-        .filter((obj) => obj.scores.final !== null)
-        .map((obj) => ({
-          objectId: obj.objectId,
-          objectName: obj.objectName,
-          objectType: obj.objectType,
-          gaName: ga.gaName,
-          avgScore100: ((obj.scores.final as number) / 5) * 100,
-          submissionCount: obj.submissionCount,
-        }))
-    )
+    const allObjects = (
+      await Promise.all(
+        resolvedPeriodIds.map(async (periodId) => {
+          const periodLabel = periodMap.get(periodId)?.label ?? periodId
+          const periodScores = await calcGAScores(periodId, undefined, threshold)
+
+          return periodScores.flatMap((ga) =>
+            ga.objectScores
+              .filter((obj) => obj.scores.final !== null)
+              .map((obj) => ({
+                periodId,
+                periodLabel,
+                objectId: obj.objectId,
+                objectName: obj.objectName,
+                objectType: obj.objectType,
+                gaName: ga.gaName,
+                avgScore100: ((obj.scores.final as number) / 5) * 100,
+                submissionCount: obj.submissionCount,
+              }))
+          )
+        })
+      )
+    ).flat()
 
     const topLowestObjects = allObjects
       .filter((item) => item.avgScore100 < threshold)
       .sort((a, b) => a.avgScore100 - b.avgScore100)
       .slice(0, 5)
       .map((o) => ({
+        periodId: o.periodId,
+        periodLabel: o.periodLabel,
         objectId: o.objectId,
         objectName: o.objectName,
         objectType: o.objectType,
@@ -71,9 +91,11 @@ export async function GET(request: Request) {
         submissionCount: o.submissionCount,
       }))
 
-    // 2. Low questions grouped by object (avg score below 3 on 1-5 scale)
+    // 2. Low questions grouped by object using raw response scores (no averaging)
     const questionScores = await db
       .select({
+        periodId: evaluationForms.periodId,
+        periodLabel: evaluationPeriods.label,
         objectId: objects.id,
         objectName: objects.name,
         objectType: objects.type,
@@ -81,8 +103,7 @@ export async function GET(request: Request) {
         questionId: questions.id,
         questionText: questions.text,
         category: questions.category,
-        avgScore: sql<number>`AVG(${evaluationScores.score})`,
-        responseCount: sql<number>`COUNT(${evaluationScores.id})`,
+        score: evaluationScores.score,
       })
       .from(questions)
       .innerJoin(
@@ -90,71 +111,91 @@ export async function GET(request: Request) {
         eq(questions.id, evaluationScores.questionId)
       )
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
+      .innerJoin(evaluationPeriods, eq(evaluationForms.periodId, evaluationPeriods.id))
       .innerJoin(objects, eq(evaluationForms.objectId, objects.id))
       .innerJoin(gaStaff, eq(objects.picGaId, gaStaff.id))
       .where(
         and(
           inArray(evaluationForms.periodId, resolvedPeriodIds),
           isNotNull(evaluationForms.submittedAt),
-          eq(questions.isActive, true)
+          eq(questions.isActive, true),
+          lte(evaluationScores.score, 2)
         )
       )
-      .groupBy(
-        objects.id,
-        objects.name,
-        objects.type,
-        gaStaff.name,
-        questions.id,
-        questions.text,
-        questions.category
-      )
-      .orderBy((t) => sql`AVG(${evaluationScores.score}) ASC`)
+      .orderBy(evaluationScores.score, evaluationForms.createdAt)
 
     const questionMap = new Map<string, {
       objectId: string
       objectName: string
       objectType: string
       gaName: string
-      questions: Array<{
+      questionsMap: Map<string, {
+        groupKey: string
+        periodId: string
+        periodLabel: string
         questionId: string
         questionText: string
         category: string
-        avgScore: number
+        score: number
         responseCount: number
       }>
       lowestScore: number
     }>()
 
-    for (const row of questionScores as any) {
-      const avgScore = row.avgScore ? parseFloat(row.avgScore) : 0
-      if (avgScore >= 3) continue
-      const responseCount = row.responseCount ? parseInt(row.responseCount) : 0
-      const existing = questionMap.get(row.objectId)
+    for (const row of questionScores) {
+      const score = row.score
+      const existingKey = row.objectId
+      const existing = questionMap.get(existingKey)
 
       if (!existing) {
-        questionMap.set(row.objectId, {
+        const questionsMap = new Map<string, {
+          groupKey: string
+          periodId: string
+          periodLabel: string
+          questionId: string
+          questionText: string
+          category: string
+          score: number
+          responseCount: number
+        }>()
+        const groupKey = `${row.periodId}:${row.questionId}:${score}`
+        questionsMap.set(groupKey, {
+          groupKey,
+          periodId: row.periodId,
+          periodLabel: row.periodLabel,
+          questionId: row.questionId,
+          questionText: row.questionText,
+          category: row.category,
+          score,
+          responseCount: 1,
+        })
+
+        questionMap.set(existingKey, {
           objectId: row.objectId,
           objectName: row.objectName,
           objectType: row.objectType,
           gaName: row.gaName,
-          questions: [{
+          questionsMap,
+          lowestScore: score,
+        })
+      } else {
+        const groupKey = `${row.periodId}:${row.questionId}:${score}`
+        const grouped = existing.questionsMap.get(groupKey)
+        if (grouped) {
+          grouped.responseCount += 1
+        } else {
+          existing.questionsMap.set(groupKey, {
+            groupKey,
+            periodId: row.periodId,
+            periodLabel: row.periodLabel,
             questionId: row.questionId,
             questionText: row.questionText,
             category: row.category,
-            avgScore,
-            responseCount,
-          }],
-          lowestScore: avgScore,
-        })
-      } else {
-        existing.questions.push({
-          questionId: row.questionId,
-          questionText: row.questionText,
-          category: row.category,
-          avgScore,
-          responseCount,
-        })
-        existing.lowestScore = Math.min(existing.lowestScore, avgScore)
+            score,
+            responseCount: 1,
+          })
+        }
+        existing.lowestScore = Math.min(existing.lowestScore, score)
       }
     }
 
@@ -166,15 +207,21 @@ export async function GET(request: Request) {
         objectName: item.objectName,
         objectType: item.objectType,
         gaName: item.gaName,
-        questions: item.questions
-          .sort((a, b) => a.avgScore - b.avgScore)
-          .slice(0, 5),
+        questions: Array.from(item.questionsMap.values())
+          .sort((a, b) => {
+            if (a.score !== b.score) return a.score - b.score
+            if (a.responseCount !== b.responseCount) return b.responseCount - a.responseCount
+            return a.periodLabel.localeCompare(b.periodLabel)
+          }),
       }))
 
     // 3. Critical feedback (score ≤ 2)
     const criticalFeedback = await db
       .select({
         scoreId: evaluationScores.id,
+        periodId: evaluationForms.periodId,
+        periodLabel: evaluationPeriods.label,
+        gaName: gaStaff.name,
         comment: evaluationScores.comment,
         score: evaluationScores.score,
         category: evaluationScores.category,
@@ -185,7 +232,9 @@ export async function GET(request: Request) {
       .from(evaluationScores)
       .innerJoin(questions, eq(evaluationScores.questionId, questions.id))
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
+      .innerJoin(evaluationPeriods, eq(evaluationForms.periodId, evaluationPeriods.id))
       .innerJoin(objects, eq(evaluationForms.objectId, objects.id))
+      .innerJoin(gaStaff, eq(objects.picGaId, gaStaff.id))
       .where(
         and(
           inArray(evaluationForms.periodId, resolvedPeriodIds),
@@ -195,10 +244,14 @@ export async function GET(request: Request) {
           sql`trim(${evaluationScores.comment}) <> ''`
         )
       )
-      .orderBy((t) => evaluationForms.createdAt)
+      .orderBy(evaluationForms.createdAt)
       .limit(10)
 
     const criticalFeedbackData = criticalFeedback.map((cf) => ({
+      scoreId: cf.scoreId,
+      periodId: cf.periodId,
+      periodLabel: cf.periodLabel,
+      gaName: cf.gaName,
       score: cf.score,
       category: cf.category,
       comment: cf.comment,

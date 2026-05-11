@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import PageHeader from '@/components/admin/PageHeader'
+import { QUESTION_WEIGHT_OPTIONS } from '@/lib/questions/weights'
 
 type Question = {
   id:         string
@@ -38,7 +39,7 @@ type FormState = {
   weight:     string
   sortOrder:  string
 }
-const EMPTY: FormState = { objectType: 'mess', category: 'facility_quality', text: '', weight: '1.00', sortOrder: '0' }
+const EMPTY: FormState = { objectType: '', category: '', text: '', weight: '1', sortOrder: '0' }
 
 export default function AdminQuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([])
@@ -51,6 +52,7 @@ export default function AdminQuestionsPage() {
   const [error, setError]         = useState('')
   const [deleteId, setDeleteId]   = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  const [activeSelect, setActiveSelect] = useState<string | null>(null)
 
   function load() {
     setLoading(true)
@@ -130,7 +132,7 @@ export default function AdminQuestionsPage() {
           subtitle="Susun bank pertanyaan per tipe objek dan kategori penilaian"
           actions={(
             <button onClick={openCreate}
-              className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -234,17 +236,39 @@ export default function AdminQuestionsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe Objek</label>
-                  <select value={form.objectType} onChange={e => setForm(f => ({ ...f, objectType: e.target.value }))}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                    {OBJ_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select value={form.objectType} onChange={e => setForm(f => ({ ...f, objectType: e.target.value }))}
+                      onFocus={() => setActiveSelect('objectType')}
+                      onMouseDown={() => setActiveSelect(prev => prev === 'objectType' ? null : 'objectType')}
+                      onBlur={() => setActiveSelect(null)}
+                      className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                      <option value="" className="text-white/30">— Pilih Tipe Objek —</option>
+                      {OBJ_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-transform duration-150 ${activeSelect === 'objectType' ? 'rotate-180' : ''}`}>
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Kategori</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                    {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                      onFocus={() => setActiveSelect('category')}
+                      onMouseDown={() => setActiveSelect(prev => prev === 'category' ? null : 'category')}
+                      onBlur={() => setActiveSelect(null)}
+                      className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                      <option value="" className="text-white/30">— Pilih Kategori —</option>
+                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-transform duration-150 ${activeSelect === 'category' ? 'rotate-180' : ''}`}>
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div>
@@ -256,8 +280,24 @@ export default function AdminQuestionsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Bobot</label>
-                  <input type="number" step="0.01" min="0" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
-                    className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                  <div className="relative">
+                    <select value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                      onFocus={() => setActiveSelect('weight')}
+                      onMouseDown={() => setActiveSelect(prev => prev === 'weight' ? null : 'weight')}
+                      onBlur={() => setActiveSelect(null)}
+                      className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                      {QUESTION_WEIGHT_OPTIONS.map(option => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-transform duration-150 ${activeSelect === 'weight' ? 'rotate-180' : ''}`}>
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Urutan</label>
@@ -270,8 +310,8 @@ export default function AdminQuestionsPage() {
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+              <button onClick={handleSave} disabled={saving || !form.objectType || !form.category || !form.text.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>

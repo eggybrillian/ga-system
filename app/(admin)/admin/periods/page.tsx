@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PageHeader from '@/components/admin/PageHeader'
 
 type Period = {
@@ -28,7 +28,7 @@ function toInputDate(date: string) {
 }
 
 type FormState = { label: string; type: string; startDate: string; endDate: string }
-const EMPTY: FormState = { label: '', type: 'monthly', startDate: '', endDate: '' }
+const EMPTY: FormState = { label: '', type: '', startDate: '', endDate: '' }
 
 export default function AdminPeriodsPage() {
   const [periods, setPeriods]   = useState<Period[]>([])
@@ -40,6 +40,14 @@ export default function AdminPeriodsPage() {
   const [error, setError]       = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  const [activeSelect, setActiveSelect] = useState<string | null>(null)
+  const startDateRef = useRef<HTMLInputElement | null>(null)
+  const endDateRef = useRef<HTMLInputElement | null>(null)
+
+  function openDatePicker(input: HTMLInputElement | null) {
+    if (!input) return
+    input.showPicker?.()
+  }
 
   function load() {
     setLoading(true)
@@ -96,7 +104,7 @@ export default function AdminPeriodsPage() {
           subtitle="Atur periode evaluasi yang sedang aktif maupun yang sudah selesai"
           actions={(
             <button onClick={openCreate}
-              className="flex items-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -170,22 +178,45 @@ export default function AdminPeriodsPage() {
               </div>
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe</label>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                  className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
-                  <option value="monthly">Bulanan</option>
-                  <option value="event_based">Berbasis Event</option>
-                </select>
+                <div className="relative">
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                    onFocus={() => setActiveSelect('type')}
+                    onMouseDown={() => setActiveSelect(prev => prev === 'type' ? null : 'type')}
+                    onBlur={() => setActiveSelect(null)}
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                    <option value="" className="text-white/30">— Pilih Tipe —</option>
+                    <option value="monthly">Bulanan</option>
+                    <option value="event_based">Berbasis Event</option>
+                  </select>
+                  <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-white/30 transition-transform duration-150 ${activeSelect === 'type' ? 'rotate-180' : ''}`}>
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+                    </svg>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tanggal Mulai</label>
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                  <input
+                    ref={startDateRef}
+                    type="date"
+                    value={form.startDate}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                    onClick={() => openDatePicker(startDateRef.current)}
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tanggal Selesai</label>
-                  <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                  <input
+                    ref={endDateRef}
+                    type="date"
+                    value={form.endDate}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    onClick={() => openDatePicker(endDateRef.current)}
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                  />
                 </div>
               </div>
             </div>
@@ -193,8 +224,8 @@ export default function AdminPeriodsPage() {
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+              <button onClick={handleSave} disabled={saving || !form.label.trim() || !form.type || !form.startDate || !form.endDate}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>

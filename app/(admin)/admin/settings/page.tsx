@@ -273,7 +273,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Odoo config section */}
-        <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-5 md:p-6 space-y-4">
+        {/* <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-5 md:p-6 space-y-4">
           <div>
             <h2 className="text-sm md:text-base font-semibold mb-1">Konfigurasi Odoo</h2>
             <p className="text-white/40 text-xs md:text-sm">
@@ -297,7 +297,7 @@ export default function SettingsPage() {
               Gunakan ID ini untuk menyinkronkan data departemen GA dari Odoo
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Save button */}
