@@ -38,6 +38,7 @@ type Period = {
   label:     string
   startDate: string
   endDate:   string
+  status?:   'open' | 'closed'
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -88,14 +89,19 @@ export default function GAStaffPage() {
   }
 
   useEffect(() => {
-    // fetch periods list first to default-select latest
+    // fetch periods list first to default-select newest active period
     fetch('/api/admin/periods')
       .then(r => r.json())
       .then((rows: Period[]) => {
         setPeriods(rows)
-        if (rows.length > 0) {
-          const latest = rows.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+        const activePeriods = rows.filter((period) => period.status === 'open')
+        if (activePeriods.length > 0) {
+          const latest = [...activePeriods].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
           setSelectedPeriodIds([latest.id])
+        } else if (rows.length > 0) {
+          // no active period — default to latest overall
+          const latestOverall = [...rows].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          setSelectedPeriodIds([latestOverall.id])
         }
       })
       .catch(() => {})

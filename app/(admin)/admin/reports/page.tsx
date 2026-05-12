@@ -9,7 +9,8 @@ type Period = {
   id: string
   label: string
   startDate: string
-  endDate: string
+  endDate:   string
+  status?:   'open' | 'closed'
 }
 
 type ObjectScore = {
@@ -59,8 +60,15 @@ export default function AdminReportsPage() {
       const rows = await res.json()
       setPeriods(rows || [])
       if (rows?.length && selectedPeriodIds.length === 0) {
-        const latest = [...rows].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
-        if (latest?.id) setSelectedPeriodIds([latest.id])
+        const activePeriods = rows.filter((period: Period) => period.status === 'open')
+        if (activePeriods.length > 0) {
+          const latest = [...activePeriods].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          if (latest?.id) setSelectedPeriodIds([latest.id])
+        } else if (rows.length > 0) {
+          // no active period — default to latest overall
+          const latestOverall = [...rows].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          if (latestOverall?.id) setSelectedPeriodIds([latestOverall.id])
+        }
       }
     } catch {
       // ignore

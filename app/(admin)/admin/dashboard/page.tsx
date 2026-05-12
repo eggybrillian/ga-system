@@ -34,6 +34,7 @@ type Period = {
   label:     string
   startDate: string
   endDate:   string
+  status?:   'open' | 'closed'
 }
 
 type Stats = {
@@ -181,10 +182,14 @@ export default function AdminDashboardPage() {
       .then(r => r.json())
       .then((rows: Period[]) => {
         setPeriods(rows)
-        // default select latest period (by startDate descending)
-        if (rows.length > 0) {
-          const latest = rows.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+        const activePeriods = rows.filter((period) => period.status === 'open')
+        if (activePeriods.length > 0) {
+          const latest = [...activePeriods].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
           setSelectedPeriodIds([latest.id])
+        } else if (rows.length > 0) {
+          // no active period — default to latest overall
+          const latestOverall = [...rows].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+          setSelectedPeriodIds([latestOverall.id])
         }
       })
       .catch(() => {})

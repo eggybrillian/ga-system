@@ -12,6 +12,7 @@ export async function GET() {
     // Ambil periode yang sedang open
     const activePeriod = await db.query.evaluationPeriods.findFirst({
       where: eq(evaluationPeriods.status, 'open'),
+      orderBy: (periods, { asc }) => [asc(periods.startDate)],
     })
 
     // Ambil semua objek yang di-assign ke user ini

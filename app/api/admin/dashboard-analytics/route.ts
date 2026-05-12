@@ -23,7 +23,10 @@ export async function GET(request: Request) {
     // Resolve period IDs: use provided ones or get active period
     let resolvedPeriodIds: string[] = []
     if (periodIds.length === 0) {
-      const activePeriod = await db.query.evaluationPeriods.findFirst({ where: eq(evaluationPeriods.status, 'open') })
+      const activePeriod = await db.query.evaluationPeriods.findFirst({
+        where: eq(evaluationPeriods.status, 'open'),
+        orderBy: (periods, { desc }) => [desc(periods.updatedAt)],
+      })
       if (activePeriod) {
         resolvedPeriodIds = [activePeriod.id]
       }

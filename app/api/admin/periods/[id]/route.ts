@@ -18,11 +18,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     })
     if (!existing) return NextResponse.json({ error: 'Periode tidak ditemukan' }, { status: 404 })
 
-    // B11: periode closed tidak bisa edit tanggal
-    if (existing.status === 'closed' && (body.startDate || body.endDate || body.label)) {
-      return NextResponse.json({ error: 'Periode yang sudah ditutup tidak dapat diedit' }, { status: 400 })
-    }
-
     const updateData: Record<string, unknown> = { updatedAt: new Date() }
 
     if (body.label)     updateData.label     = body.label.trim()

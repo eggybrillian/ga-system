@@ -77,7 +77,7 @@ export default function PeriodSelector({ periods, selected, onChange, compact }:
 
           <div className="flex items-center justify-between mt-3">
             <div className="flex gap-2">
-              <button onClick={() => onChange(periods.map(p => p.id))} className="text-xs px-2 py-1 bg-white/[0.04] rounded">All</button>
+              <button onClick={() => onChange([...periods].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(p => p.id))} className="text-xs px-2 py-1 bg-white/[0.04] rounded">All</button>
               <button onClick={() => onChange([])} className="text-xs px-2 py-1 bg-white/[0.04] rounded">Clear</button>
             </div>
             <div className="flex gap-2">

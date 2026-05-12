@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     // B3: cek ada periode open
     const period = await db.query.evaluationPeriods.findFirst({
       where: eq(evaluationPeriods.status, 'open'),
+      orderBy: (periods, { asc }) => [asc(periods.startDate)],
     })
     if (!period) {
       return NextResponse.json({ error: 'Tidak ada periode evaluasi yang aktif' }, { status: 400 })

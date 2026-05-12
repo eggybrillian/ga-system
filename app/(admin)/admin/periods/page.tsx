@@ -98,7 +98,7 @@ export default function AdminPeriodsPage() {
 
   return (
     <div className="space-y-6">
-      <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-2 py-4 space-y-6">
         <PageHeader
           title="Kelola Periode"
           subtitle="Atur periode evaluasi yang sedang aktif maupun yang sudah selesai"
@@ -115,20 +115,20 @@ export default function AdminPeriodsPage() {
         />
         <div className="space-y-2">
         {loading ? (
-          [1,2,3].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-xl animate-pulse" />)
+          [1,2,3].map(i => <div key={i} className="h-20 bg-[#161b27] border border-white/[0.08] rounded-lg animate-pulse" />)
         ) : periods.length === 0 ? (
-          <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-10 text-center text-white/30 text-sm">
+          <div className="bg-[#161b27] border border-white/[0.08] rounded-lg p-12 text-center text-white/30 text-sm">
             Belum ada periode. Buat periode pertama sekarang.
           </div>
         ) : periods.map(p => {
           const st = STATUS[p.status]
           return (
-            <div key={p.id} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4 md:p-5 flex items-start gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+            <div key={p.id} className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 transition-colors hover:bg-white/[0.10] hover:text-white">
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <p className="font-medium">{p.label}</p>
-                  <span className={`text-xs border rounded-full px-2.5 py-0.5 ${st.bg} ${st.color}`}>{st.label}</span>
-                  <span className="text-xs text-white/20 border border-white/[0.06] rounded-full px-2.5 py-0.5">
+                  <p className="font-medium text-white truncate">{p.label}</p>
+                  <span className={`text-xs border rounded-full px-2.5 py-0.5 shrink-0 ${st.bg} ${st.color}`}>{st.label}</span>
+                  <span className="text-xs text-white/20 border border-white/[0.06] rounded-full px-2.5 py-0.5 shrink-0">
                     {p.type === 'monthly' ? 'Bulanan' : 'Event'}
                   </span>
                 </div>
@@ -143,14 +143,12 @@ export default function AdminPeriodsPage() {
                       : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
                   {p.status === 'open' ? 'Tutup' : 'Buka'}
                 </button>
-                {p.status !== 'closed' && (
-                  <button onClick={() => openEdit(p)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                )}
+                <button onClick={() => openEdit(p)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
                 <button onClick={() => { setDeleteId(p.id); setDeleteError('') }}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -167,14 +165,14 @@ export default function AdminPeriodsPage() {
       {/* Create/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-md p-6 space-y-5">
-            <h2 className="font-semibold">{modal === 'create' ? 'Tambah Periode' : 'Edit Periode'}</h2>
+          <div className="bg-[#161b27] border border-white/[0.08] rounded-xl w-full max-w-md p-6 space-y-5 shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
+            <h2 className="font-semibold text-sm">{modal === 'create' ? 'Tambah Periode' : 'Edit Periode'}</h2>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Label</label>
                 <input type="text" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
                   placeholder="Contoh: Mei 2025"
-                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-blue-500/50" />
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#3b82f6]" />
               </div>
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe</label>
@@ -183,7 +181,7 @@ export default function AdminPeriodsPage() {
                     onFocus={() => setActiveSelect('type')}
                     onMouseDown={() => setActiveSelect(prev => prev === 'type' ? null : 'type')}
                     onBlur={() => setActiveSelect(null)}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-blue-500/50 appearance-none">
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3.5 py-2.5 pr-10 text-white text-sm focus:outline-none focus:border-[#3b82f6] appearance-none">
                     <option value="" className="text-white/30">— Pilih Tipe —</option>
                     <option value="monthly">Bulanan</option>
                     <option value="event_based">Berbasis Event</option>
@@ -204,7 +202,7 @@ export default function AdminPeriodsPage() {
                     value={form.startDate}
                     onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                     onClick={() => openDatePicker(startDateRef.current)}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#3b82f6] cursor-pointer"
                   />
                 </div>
                 <div>
@@ -215,7 +213,7 @@ export default function AdminPeriodsPage() {
                     value={form.endDate}
                     onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                     onClick={() => openDatePicker(endDateRef.current)}
-                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                    className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#3b82f6] cursor-pointer"
                   />
                 </div>
               </div>
@@ -223,9 +221,9 @@ export default function AdminPeriodsPage() {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }}
-                className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
+                className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-lg py-2.5 text-sm transition-colors">Batal</button>
               <button onClick={handleSave} disabled={saving || !form.label.trim() || !form.type || !form.startDate || !form.endDate}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
+                className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>
@@ -236,15 +234,15 @@ export default function AdminPeriodsPage() {
       {/* Delete confirm */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-[#161b27] border border-white/[0.08] rounded-xl w-full max-w-sm p-6 space-y-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
             <div>
-              <h3 className="font-semibold">Hapus Periode?</h3>
+              <h3 className="font-semibold text-sm">Hapus Periode?</h3>
               <p className="text-white/40 text-sm mt-1">Periode yang sudah memiliki data evaluasi tidak dapat dihapus.</p>
             </div>
             {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleDelete} className="flex-1 bg-red-500/80 hover:bg-red-500 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">Hapus</button>
+              <button onClick={() => setDeleteId(null)} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-lg py-2.5 text-sm transition-colors">Batal</button>
+              <button onClick={handleDelete} className="flex-1 bg-red-500/80 hover:bg-red-500 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">Hapus</button>
             </div>
           </div>
         </div>

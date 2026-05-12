@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       // Jika tidak ada periodId, gunakan periode yang open
       const activePeriod = await db.query.evaluationPeriods.findFirst({
         where: eq(evaluationPeriods.status, 'open'),
+        orderBy: (periods, { desc }) => [desc(periods.updatedAt)],
       })
       if (!activePeriod) {
         return NextResponse.json({ gaStaff: [], period: null })
