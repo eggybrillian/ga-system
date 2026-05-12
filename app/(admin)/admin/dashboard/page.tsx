@@ -225,9 +225,9 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 { label: 'Submission',        value: stats.totalSubmissions, sub: `dari ${stats.totalAssignments} penugasan`},
-                { label: 'GA Dinilai',        value: `${stats.gaScored}/${stats.gaTotal}`, sub: 'memiliki data skor', color: 'text-white' },
-                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: threshold === null ? 'memuat threshold' : `min. ${threshold}%`},
-                { label: 'Threshold',         value: threshold === null ? 'Memuat...' : `${threshold}%`, sub: threshold === null ? 'mengambil pengaturan' : 'batas minimum', color: 'text-white' },
+                { label: 'GA Dinilai',        value: `${stats.gaScored}/${stats.gaTotal}`, sub: 'memiliki data skor', color: 'text-blue-400' },
+                { label: 'Di Bawah Threshold',value: stats.gaBelow, sub: threshold === null ? 'memuat threshold' : `perlu perhatian`, color: 'text-red-400' },
+                { label: 'Threshold',         value: threshold === null ? 'Memuat...' : `${threshold}%`, sub: threshold === null ? 'mengambil pengaturan' : 'batas minimum', color: 'text-yellow-400' },
               ].map(card => (
                 <div key={card.label} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
                   <p className="text-white/40 text-xs mb-1 truncate">{card.label}</p>
@@ -410,7 +410,7 @@ export default function AdminDashboardPage() {
               <h2 className="font-medium text-sm">Ranking GA Staff</h2>
               {(stats?.gaBelow ?? 0) > 0 && (
                 <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/20 rounded-full px-2.5 py-0.5">
-                  {stats!.gaBelow} di bawah threshold
+                  {stats!.gaBelow} GA Staff di bawah threshold
                 </span>
               )}
             </div>

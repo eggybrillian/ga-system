@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import PageHeader from '@/components/admin/PageHeader'
 import ActionButton from '@/components/admin/ActionButton'
 import ScoreBar from '@/components/admin/ScoreBar'
-import StatusBadge from '@/components/admin/StatusBadge'
 import PeriodSelector from '@/components/admin/PeriodSelector'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -23,14 +22,15 @@ type ObjectScore = {
 }
 
 type GAStaffItem = {
-  id:               string
-  name:             string
-  nik:              string
-  position?:        string
-  managedObjects:   number
-  finalScore:       number | null
-  isBelow:          boolean
-  objectScores:     ObjectScore[]
+  id:                    string
+  name:                  string
+  nik:                   string
+  position?:             string
+  managedObjects:        number
+  finalScore:            number | null
+  isBelow:               boolean
+  belowThresholdObjects: number
+  objectScores:          ObjectScore[]
 }
 
 type Period = {
@@ -42,10 +42,6 @@ type Period = {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-
-const TYPE_ICON: Record<string, string> = {
-  mess: '🏠', office: '🏢', vehicle: '🚐', meeting_room: '📋',
-}
 
 const CAT_SHORT: Record<string, string> = {
   facility_quality:    'Fasilitas',
@@ -65,6 +61,7 @@ export default function GAStaffPage() {
   const [loading, setLoading]    = useState(true)
   const [expanded, setExpanded]  = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [threshold, setThreshold] = useState(60)
 
   function fetchData(periodIds?: string[]) {
     setLoading(true)
@@ -81,6 +78,9 @@ export default function GAStaffPage() {
           setPeriod(d.period[0] ?? null)
         } else {
           setPeriod(d.period)
+        }
+        if (typeof d.threshold === 'number') {
+          setThreshold(d.threshold)
         }
         setGAStaff(d.gaStaff ?? [])
       })
@@ -160,13 +160,11 @@ export default function GAStaffPage() {
             <p className="text-xl md:text-2xl font-semibold text-emerald-400">{scored.length}</p>
             <p className="text-white/20 text-xs mt-1">dari {gaStaff.length}</p>
           </div>
-          {below.length > 0 && (
-            <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
-              <p className="text-white/40 text-xs mb-1">Di Bawah Threshold</p>
-              <p className="text-xl md:text-2xl font-semibold text-red-400">{below.length}</p>
-              <p className="text-white/20 text-xs mt-1">perlu perhatian</p>
-            </div>
-          )}
+          <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
+            <p className="text-white/40 text-xs mb-1">Di Bawah Threshold</p>
+            <p className="text-xl md:text-2xl font-semibold text-red-400">{below.length}</p>
+            <p className="text-white/20 text-xs mt-1">batas {threshold}%</p>
+          </div>
         </div>
       )}
 
@@ -190,7 +188,7 @@ export default function GAStaffPage() {
           <h2 className="font-medium text-sm">Daftar GA Staff</h2>
           {below.length > 0 && (
             <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/20 rounded-full px-2.5 py-0.5">
-              {below.length} di bawah threshold
+              {below.length} GA staff di bawah threshold
             </span>
           )}
         </div>
@@ -225,11 +223,26 @@ export default function GAStaffPage() {
                       <p className="text-white/30 text-xs mt-0.5 truncate">
                         {ga.nik} · {ga.managedObjects} objek
                       </p>
+                      {ga.belowThresholdObjects > 0 && (
+                        <p className="text-red-400 text-xs mt-1 truncate">
+                          {ga.belowThresholdObjects} objek di bawah threshold
+                        </p>
+                      )}
                     </div>
 
                     {/* Status badge */}
                     <div className="shrink-0">
-                      <StatusBadge isBelow={ga.isBelow} score={ga.finalScore} />
+                      {ga.finalScore === null ? (
+                        <span className="text-xs text-white/20"></span>
+                      ) : ga.isBelow ? (
+                        <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">
+                          ⚠ Di bawah threshold
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 rounded-full px-2 py-0.5 whitespace-nowrap">
+                          ✓ Memenuhi threshold
+                        </span>
+                      )}
                     </div>
 
                     {/* Score — hidden on xs, shown sm+ */}
@@ -267,12 +280,11 @@ export default function GAStaffPage() {
                 {expanded === ga.id && (
                   <div className="bg-[#0f1117] px-4 md:px-5 py-4 space-y-3">
                     {ga.managedObjects === 0 ? (
-                      <p className="text-white/20 text-sm">Tidak ada objek yang dikelola</p>
+                      <p className="text-white/20 text-sm">Belum ada objek yang dikelola</p>
                     ) : (
                       ga.objectScores.map(obj => (
                         <div key={obj.objectId} className="bg-[#161b27] border border-white/[0.06] rounded-xl p-4">
                           <div className="flex items-center gap-2 mb-3">
-                            <span>{TYPE_ICON[obj.objectType]}</span>
                             <p className="text-sm font-medium flex-1 truncate">{obj.objectName}</p>
                             <span className="text-white/20 text-xs shrink-0">
                               {obj.submissionCount} evaluasi

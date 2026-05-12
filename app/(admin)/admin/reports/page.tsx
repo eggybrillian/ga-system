@@ -47,6 +47,7 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState<'excel' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [threshold, setThreshold] = useState(60)
 
   const selectedPeriods = useMemo(
     () => periods.filter((item) => selectedPeriodIds.includes(item.id)),
@@ -87,6 +88,9 @@ export default function AdminReportsPage() {
       if (!res.ok) throw new Error((await res.json()).error || 'Gagal memuat GA staff')
       const json = await res.json()
 
+      if (typeof json.threshold === 'number') {
+        setThreshold(json.threshold)
+      }
       setGAStaff(json.gaStaff ?? [])
     } catch (err: any) {
       setError(err.message)
@@ -160,25 +164,9 @@ export default function AdminReportsPage() {
                 ? (selectedPeriods[0] ? `Periode: ${selectedPeriods[0].label}` : 'Memuat...')
                 : `Periode: ${selectedPeriodIds.length} terpilih`
           }
-          actions={(
-            <div className="flex items-center gap-3">
-              <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
-              <PeriodSelector
-                periods={periods}
-                selected={selectedPeriodIds}
-                onChange={setSelectedPeriodIds}
-              />
-            </div>
-          )}
         />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-4 flex-1">
-          <p className="text-white/20 text-xs leading-relaxed">
-            Gunakan pemilih periode untuk melihat satu atau beberapa periode sekaligus.
-          </p>
-        </div>
-
         <div className="flex flex-wrap gap-2">
           <button
             className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm hover:bg-white/[0.07]"
@@ -195,6 +183,14 @@ export default function AdminReportsPage() {
             {exporting === 'excel' ? 'Export Excel...' : 'Export Excel'}
           </button>
         </div>
+        <div className="flex items-center gap-3">
+          <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
+          <PeriodSelector
+            periods={periods}
+            selected={selectedPeriodIds}
+            onChange={setSelectedPeriodIds}
+          />
+        </div>
       </div>
 
       {error && <div className="text-sm text-red-400 border border-red-500/20 bg-red-500/10 rounded-lg px-3 py-2">{error}</div>}
@@ -206,7 +202,7 @@ export default function AdminReportsPage() {
         </div>
         <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
           <p className="text-white/40 text-xs mb-1">Memiliki Skor</p>
-          <p className="text-2xl font-semibold text-emerald-400">{stats.scored}</p>
+          <p className="text-2xl font-semibold text-blue-400">{stats.scored}</p>
         </div>
         <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4">
           <p className="text-white/40 text-xs mb-1">Di Bawah Threshold</p>
@@ -232,9 +228,6 @@ export default function AdminReportsPage() {
                     <p className="font-medium text-sm">{ga.name}</p>
                     <p className="text-white/30 text-xs">{ga.nik} · {ga.managedObjects} objek</p>
                   </div>
-                  <div className={`text-sm font-semibold ${ga.isBelow ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {ga.finalScore !== null ? ga.finalScore.toFixed(1) : '—'}
-                  </div>
                 </div>
                 <ScoreBar value={ga.finalScore} isBelow={ga.isBelow} />
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -245,7 +238,8 @@ export default function AdminReportsPage() {
                       <div className="mt-2">
                         <ScoreBar
                           value={toPercent(obj.scores.final)}
-                          isBelow={(toPercent(obj.scores.final) ?? 0) < 60}
+                          threshold={threshold}
+                          isBelow={(toPercent(obj.scores.final) ?? 0) < threshold}
                         />
                       </div>
                     </div>

@@ -65,14 +65,14 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <main className="max-w-7xl mx-auto px-4 md:px-2 py-4 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-2 py-4 space-y-5">
         <PageHeader
           title="Daftar User"
           subtitle="Data user dari Odoo dengan riwayat evaluasi"
         />
 
         {/* Search Bar */}
-        <div className="flex gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="flex-1 relative">
             <svg className="absolute left-3 top-2.5 w-4 h-4 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -82,11 +82,11 @@ export default function UsersPage() {
               placeholder="Cari nama, email, atau NIK..."
               value={searchQuery}
               onChange={handleSearch}
-              className="w-full pl-9 pr-3 py-2 bg-[#161b27] border border-white/[0.08] rounded-lg text-white text-sm placeholder-white/30 focus:border-[#3b82f6] focus:outline-none transition-colors"
+              className="w-full pl-9 pr-3 py-2.5 bg-[#161b27] border border-white/[0.08] rounded-lg text-white text-sm placeholder-white/30 focus:border-[#3b82f6] focus:outline-none transition-colors"
             />
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-[#161b27] border border-white/[0.08] rounded-lg text-white/30 text-sm font-medium">
-            <span>{users.length}</span>
+          <div className="flex items-center justify-between lg:justify-center gap-2 px-3 py-2.5 bg-[#161b27] border border-white/[0.08] rounded-lg text-white/30 text-sm font-medium lg:min-w-28">
+            <span className="text-white/70">{users.length}</span>
             <span className="text-white/20">hasil</span>
           </div>
         </div>
@@ -102,52 +102,81 @@ export default function UsersPage() {
 
         {/* Users Grid/Table */}
         {!loading && users.length > 0 && (
-          <div className="space-y-2">
-            {users.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => router.push(`/admin/users/${user.id}`)}
-                className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 transition-colors hover:bg-white/[0.10] hover:text-white"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <h3 className="font-medium text-white truncate">{user.name}</h3>
-                    <span className={`text-xs border rounded-full px-2.5 py-0.5 shrink-0 ${user.isActive ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-white/10 text-white/30 bg-white/5'}`}>
-                      {user.isActive ? 'Aktif' : 'Nonaktif'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-white/40">
-                    <div className="flex items-center gap-1">
-                      <span className="text-white/20">NIK:</span>
-                      <span className="font-mono">{user.nik}</span>
+          <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#161b27]">
+            <div className="hidden lg:grid grid-cols-[minmax(0,1.75fr)_0.9fr_1fr_0.9fr_1.35fr] gap-2 px-4 py-2.5 border-b border-white/[0.06] text-[11px] uppercase tracking-[0.12em] text-white/25">
+              <div>User</div>
+              <div>NIK</div>
+              <div>Departemen</div>
+              <div>Evaluasi</div>
+              <div>Terakhir</div>
+            </div>
+            <div className="divide-y divide-white/[0.06]">
+              {users.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => router.push(`/admin/users/${user.id}`)}
+                  className="w-full text-left px-4 py-2.5 transition-colors hover:bg-white/[0.04]"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.75fr)_0.9fr_1fr_0.9fr_1.35fr] gap-2 lg:items-center">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 border ${user.isActive ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <span className="text-[12px] font-semibold text-white/80">
+                          {user.name
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map(part => part[0]?.toUpperCase())
+                            .join('') || 'U'}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium text-[14px] text-white truncate max-w-full">{user.name}</h3>
+                          {!user.isActive && (
+                            <span className="text-[10px] border rounded-full px-1.5 py-0.5 shrink-0 border-white/10 text-white/30 bg-white/5">
+                              Nonaktif
+                            </span>
+                          )}
+                        </div>
+                        {user.lastSubmittedPeriod && (
+                          <p className="mt-1 text-[11px] text-white/30 lg:hidden truncate">
+                            📋 {user.lastSubmittedPeriod} {user.lastSubmittedObject ? `(${user.lastSubmittedObject})` : ''} · {formatDate(user.lastSubmittedAt)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {user.email && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-white/20">Email:</span>
-                        <span className="truncate">{user.email}</span>
-                      </div>
-                    )}
-                    {user.department && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-white/20">Dept:</span>
-                        <span className="truncate">{user.department}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <span className="text-white/20">Evaluasi:</span>
+
+                    <div className="flex items-center gap-2 text-[12px] text-white/40 lg:justify-start">
+                      <span className="lg:hidden text-white/20">NIK:</span>
+                      <span className="font-mono text-white/70 truncate">{user.nik}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[12px] text-white/40 lg:justify-start">
+                      <span className="lg:hidden text-white/20">Dept:</span>
+                      <span className="truncate text-white/70">{user.department || '—'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[12px] text-white/40 lg:justify-start">
+                      <span className="lg:hidden text-white/20">Eval:</span>
                       <span className="font-semibold text-white">{user.totalEvaluations}</span>
+                      <span className="text-white/20">data</span>
+                    </div>
+
+                    <div className="hidden lg:flex items-center gap-2 text-[12px] text-white/40 min-w-0">
+                      {user.lastSubmittedPeriod ? (
+                        <>
+                          <span className="truncate text-white/70">{user.lastSubmittedPeriod} {user.lastSubmittedObject ? `(${user.lastSubmittedObject})` : ''}</span>
+                          <span className="text-white/15 shrink-0">•</span>
+                          <span className="shrink-0">{formatDate(user.lastSubmittedAt)}</span>
+                        </>
+                      ) : (
+                        <span className="text-white/20">—</span>
+                      )}
                     </div>
                   </div>
-                  {user.lastSubmittedPeriod && (
-                    <div className="mt-2 text-xs text-white/30 flex items-center gap-2">
-                      <span>📋 {user.lastSubmittedPeriod} ({user.lastSubmittedObject})</span>
-                      <span className="text-white/20">•</span>
-                      <span>{formatDate(user.lastSubmittedAt)}</span>
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

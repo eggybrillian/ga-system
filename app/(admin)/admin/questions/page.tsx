@@ -78,7 +78,9 @@ export default function AdminQuestionsPage() {
   }
 
   async function handleSave() {
-    if (!form.text.trim()) { setError('Teks pertanyaan wajib diisi'); return }
+    if (!form.objectType) { setError('Tipe objek harus dipilih'); return }
+    if (!form.category) { setError('Kategori harus dipilih'); return }
+    if (!form.text.trim()) { setError('Pertanyaan harus diisi'); return }
     setSaving(true); setError('')
     try {
       const url    = modal === 'edit' ? `/api/admin/questions/${editing!.id}` : '/api/admin/questions'
@@ -94,6 +96,8 @@ export default function AdminQuestionsPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error); return }
       setModal(null); load()
+    } catch {
+      setError('Gagal menyimpan pertanyaan')
     } finally { setSaving(false) }
   }
 
@@ -180,7 +184,7 @@ export default function AdminQuestionsPage() {
               <div key={cat} className="space-y-2">
                 <h3 className="text-xs text-white/30 uppercase tracking-wider ml-1">{CAT_LABEL[cat] ?? cat}</h3>
                 {qs.map(q => (
-                  <div key={q.id} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4 md:p-5 flex items-start gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                  <div key={q.id} className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4 md:p-5 flex items-center gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <p className={`font-medium text-sm ${q.isActive ? '' : 'text-white/30 line-through'}`}>{q.text}</p>
@@ -207,13 +211,13 @@ export default function AdminQuestionsPage() {
                         {q.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                       </button>
                       <button onClick={() => openEdit(q)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
                       <button onClick={() => { setDeleteId(q.id); setDeleteError('') }}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -306,11 +310,15 @@ export default function AdminQuestionsPage() {
                 </div>
               </div>
             </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleSave} disabled={saving || !form.objectType || !form.category || !form.text.trim()}
+              <button onClick={handleSave} disabled={saving}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>

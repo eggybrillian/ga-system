@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       service_performance: dbSettings.weight_service_performance,
       user_satisfaction: dbSettings.weight_user_satisfaction,
     }
+    const threshold = dbSettings.threshold
 
     // Hitung skor GA (single period or multiple)
     let gaScores: GAScore[] = []
@@ -50,18 +51,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response dengan info objects managed dan score
-    const result = gaScores.map((ga) => ({
-      id: ga.gaId,
-      name: ga.gaName,
-      nik: ga.gaNik,
-      managedObjects: ga.objectScores.length,
-      finalScore: ga.finalScore,
-      isBelow: ga.isBelow,
-      objectScores: ga.objectScores,
-    }))
+    const result = gaScores.map((ga) => {
+      const belowThresholdObjects = ga.objectScores.filter((obj) => {
+        if (obj.scores.final === null) return false
+        const finalPercent = Math.round((obj.scores.final / 5) * 1000) / 10
+        return finalPercent < threshold
+      }).length
+
+      return {
+        id: ga.gaId,
+        name: ga.gaName,
+        nik: ga.gaNik,
+        managedObjects: ga.objectScores.length,
+        finalScore: ga.finalScore,
+        isBelow: ga.isBelow,
+        belowThresholdObjects,
+        objectScores: ga.objectScores,
+      }
+    })
 
     return NextResponse.json({
       period: period || null,
+      threshold,
       gaStaff: result,
     })
   } catch (error) {

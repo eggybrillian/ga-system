@@ -16,11 +16,17 @@ type SettingsForm = {
 // ── Main Page ──────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  function toPercentInput(value: unknown, fallback: string) {
+    const num = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
+    if (Number.isNaN(num)) return fallback
+    return (num * 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d*[1-9])0$/, '$1')
+  }
+
   const [form, setForm] = useState<SettingsForm>({
     threshold: '60',
-    weight_facility_quality: '0.35',
-    weight_service_performance: '0.40',
-    weight_user_satisfaction: '0.25',
+    weight_facility_quality: '35',
+    weight_service_performance: '40',
+    weight_user_satisfaction: '25',
     odoo_ga_department_id: '5',
   })
 
@@ -39,9 +45,9 @@ export default function SettingsPage() {
         } else {
           setForm({
             threshold: data.threshold ?? '60',
-            weight_facility_quality: data.weight_facility_quality ?? '0.35',
-            weight_service_performance: data.weight_service_performance ?? '0.40',
-            weight_user_satisfaction: data.weight_user_satisfaction ?? '0.25',
+            weight_facility_quality: toPercentInput(data.weight_facility_quality, '35'),
+            weight_service_performance: toPercentInput(data.weight_service_performance, '40'),
+            weight_user_satisfaction: toPercentInput(data.weight_user_satisfaction, '25'),
             odoo_ga_department_id: data.odoo_ga_department_id ?? '5',
           })
         }
@@ -59,7 +65,7 @@ export default function SettingsPage() {
     (parseFloat(form.weight_service_performance) || 0) +
     (parseFloat(form.weight_user_satisfaction) || 0)
 
-  const isWeightValid = Math.abs(weightSum - 1.0) < 0.0001 // Allow for floating point errors
+  const isWeightValid = Math.abs(weightSum - 100) < 0.0001 // Allow for floating point errors
 
   // Handle field changes
   function handleChange(field: keyof SettingsForm, value: string) {
@@ -78,7 +84,7 @@ export default function SettingsPage() {
 
     // Validate weights
     if (!isWeightValid) {
-      setError(`Bobot harus berjumlah 1.0 (saat ini: ${weightSum.toFixed(4)})`)
+      setError(`Bobot harus berjumlah 100% (saat ini: ${weightSum.toFixed(2)}%)`)
       return
     }
 
@@ -92,9 +98,9 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           threshold: parseFloat(form.threshold),
-          weight_facility_quality: parseFloat(form.weight_facility_quality),
-          weight_service_performance: parseFloat(form.weight_service_performance),
-          weight_user_satisfaction: parseFloat(form.weight_user_satisfaction),
+          weight_facility_quality: parseFloat(form.weight_facility_quality) / 100,
+          weight_service_performance: parseFloat(form.weight_service_performance) / 100,
+          weight_user_satisfaction: parseFloat(form.weight_user_satisfaction) / 100,
           odoo_ga_department_id: parseInt(form.odoo_ga_department_id),
         }),
       })
@@ -143,15 +149,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {success && (
-        <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-lg p-4 text-sm flex items-start gap-3">
-          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{success}</span>
-        </div>
-      )}
-
       {/* Form sections */}
       <div className="space-y-6">
         {/* Threshold section */}
@@ -190,7 +187,7 @@ export default function SettingsPage() {
           <div>
             <h2 className="text-sm md:text-base font-semibold mb-1">Bobot Kategori Penilaian</h2>
             <p className="text-white/40 text-xs md:text-sm">
-              Tiga kategori dengan bobot total harus sama dengan 1.00
+              Tiga kategori dengan bobot total harus sama dengan 100%
             </p>
           </div>
 
@@ -203,8 +200,8 @@ export default function SettingsPage() {
               <input
                 type="number"
                 min="0"
-                max="1"
-                step="0.01"
+                max="100"
+                step="0.1"
                 value={form.weight_facility_quality}
                 onChange={(e) => handleChange('weight_facility_quality', e.target.value)}
                 className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 md:px-4 py-2.5 md:py-3 text-white placeholder-white/20 text-sm md:text-base focus:outline-none focus:border-white/20 focus:bg-[#161b27] transition-colors"
@@ -222,8 +219,8 @@ export default function SettingsPage() {
               <input
                 type="number"
                 min="0"
-                max="1"
-                step="0.01"
+                max="100"
+                step="0.1"
                 value={form.weight_service_performance}
                 onChange={(e) => handleChange('weight_service_performance', e.target.value)}
                 className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 md:px-4 py-2.5 md:py-3 text-white placeholder-white/20 text-sm md:text-base focus:outline-none focus:border-white/20 focus:bg-[#161b27] transition-colors"
@@ -241,8 +238,8 @@ export default function SettingsPage() {
               <input
                 type="number"
                 min="0"
-                max="1"
-                step="0.01"
+                max="100"
+                step="0.1"
                 value={form.weight_user_satisfaction}
                 onChange={(e) => handleChange('weight_user_satisfaction', e.target.value)}
                 className="w-full bg-[#0f1117] border border-white/[0.08] rounded-lg px-3 md:px-4 py-2.5 md:py-3 text-white placeholder-white/20 text-sm md:text-base focus:outline-none focus:border-white/20 focus:bg-[#161b27] transition-colors"
@@ -266,8 +263,8 @@ export default function SettingsPage() {
               } />
             </svg>
             <span className={isWeightValid ? 'text-emerald-400' : 'text-red-400'}>
-              Total bobot: <span className="font-semibold">{weightSum.toFixed(4)}</span>
-              {isWeightValid ? ' ✓' : ' (harus 1.0000)'}
+              Total bobot: <span className="font-semibold">{weightSum.toFixed(2)}%</span>
+              {isWeightValid ? ' ✓' : ' (harus 100%)'}
             </span>
           </div>
         </div>
@@ -301,7 +298,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Save button */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving || !isWeightValid}
@@ -314,6 +311,14 @@ export default function SettingsPage() {
           )}
           <span>{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
         </button>
+        {success && (
+          <div className="inline-flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{success}</span>
+          </div>
+        )}
       </div>
       </main>
     </div>

@@ -67,7 +67,10 @@ export default function AdminPeriodsPage() {
   }
 
   async function handleSave() {
-    if (!form.label.trim() || !form.startDate || !form.endDate) { setError('Semua field wajib diisi'); return }
+    if (!form.label.trim()) { setError('Label harus diisi'); return }
+    if (!form.type) { setError('Tipe harus dipilih'); return }
+    if (!form.startDate) { setError('Tanggal mulai harus diisi'); return }
+    if (!form.endDate) { setError('Tanggal selesai harus diisi'); return }
     setSaving(true); setError('')
     try {
       const url    = modal === 'edit' ? `/api/admin/periods/${editing!.id}` : '/api/admin/periods'
@@ -76,6 +79,8 @@ export default function AdminPeriodsPage() {
       const data   = await res.json()
       if (!res.ok) { setError(data.error); return }
       setModal(null); load()
+    } catch {
+      setError('Gagal menyimpan periode')
     } finally { setSaving(false) }
   }
 
@@ -123,7 +128,7 @@ export default function AdminPeriodsPage() {
         ) : periods.map(p => {
           const st = STATUS[p.status]
           return (
-            <div key={p.id} className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 transition-colors hover:bg-white/[0.10] hover:text-white">
+            <div key={p.id} className="w-full text-left bg-[#161b27] border border-white/[0.08] rounded-lg p-4 flex flex-col md:flex-row md:items-center items-center gap-3 md:gap-4 transition-colors hover:bg-white/[0.10] hover:text-white">
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <p className="font-medium text-white truncate">{p.label}</p>
@@ -144,13 +149,13 @@ export default function AdminPeriodsPage() {
                   {p.status === 'open' ? 'Tutup' : 'Buka'}
                 </button>
                 <button onClick={() => openEdit(p)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
                 <button onClick={() => { setDeleteId(p.id); setDeleteError('') }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -218,11 +223,15 @@ export default function AdminPeriodsPage() {
                 </div>
               </div>
             </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-lg py-2.5 text-sm transition-colors">Batal</button>
-              <button onClick={handleSave} disabled={saving || !form.label.trim() || !form.type || !form.startDate || !form.endDate}
+              <button onClick={handleSave} disabled={saving}
                 className="flex-1 bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
