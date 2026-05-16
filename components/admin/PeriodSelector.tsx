@@ -28,17 +28,19 @@ export default function PeriodSelector({ periods, selected, onChange, compact }:
   const filtered = periods.filter(p => p.label.toLowerCase().includes(query.toLowerCase()))
 
   return (
-    <div ref={root} className="relative inline-block">
+    <div ref={root} className="relative inline-block max-w-full">
       <button
         onClick={() => setOpen(s => !s)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/[0.06] bg-[#0f1117] text-sm text-white ${compact ? 'px-2 py-1 text-xs' : ''}`}
+        className={`flex max-w-full items-center gap-2 px-3 py-1.5 rounded-md border border-white/[0.06] bg-[#0f1117] text-sm text-white ${compact ? 'px-2 py-1 text-xs' : ''}`}
       >
-        <span>{selected.length === 0 ? 'Pilih Periode' : (selected.length === 1 ? periods.find(p => p.id === selected[0])?.label ?? 'Periode' : `${selected.length} terpilih`)}</span>
+        <span className="min-w-0 truncate text-left">
+          {selected.length === 0 ? 'Pilih Periode' : (selected.length === 1 ? periods.find(p => p.id === selected[0])?.label ?? 'Periode' : `${selected.length} terpilih`)}
+        </span>
         <svg className={`w-3 h-3 text-white/40 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-2 w-72 max-w-[calc(100vw-3rem)] right-0 bg-[#0b0c10] border border-white/[0.06] rounded-lg shadow-lg p-3">
+        <div className="absolute z-40 mt-2 right-0 w-[min(18rem,calc(100vw-3rem))] bg-[#0b0c10] border border-white/[0.06] rounded-lg shadow-lg p-3">
           <div className="mb-2">
             <input
               value={query}

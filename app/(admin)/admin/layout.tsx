@@ -149,8 +149,10 @@ function BottomNav({ onLogout, navItems }: { onLogout: () => void; navItems: typ
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     function check() {
@@ -170,6 +172,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       .catch(() => setUserRole(null))
   }, [])
 
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -188,7 +194,98 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0f1117] text-white">
       <Sidebar collapsed={sidebarCollapsed} onLogout={handleLogout} navItems={filteredNavItems} />
-      <BottomNav onLogout={handleLogout} navItems={filteredNavItems} />
+
+      <header className="md:hidden sticky top-0 z-30 border-b border-white/[0.06] bg-[#0d1117]/95 backdrop-blur">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[#3b82f6] flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">GA Admin</p>
+              <p className="text-[11px] text-white/35 truncate">Panel admin</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+            aria-label="Buka menu navigasi"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm">
+          <button
+            aria-label="Tutup menu navigasi"
+            className="absolute inset-0"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-0 h-full w-[min(22rem,85vw)] bg-[#0d1117] border-l border-white/[0.06] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06]">
+              <div>
+                <p className="text-sm font-medium text-white">Navigasi Admin</p>
+                <p className="text-[11px] text-white/35">Pilih halaman</p>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white"
+                aria-label="Tutup menu navigasi"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto p-3">
+              <div className="space-y-1">
+                {filteredNavItems.map(item => {
+                  const active = pathname === item.href
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={() => {
+                        router.push(item.href)
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${active
+                        ? 'bg-[#3b82f6]/15 text-blue-400'
+                        : 'text-white/60 hover:bg-white/[0.05] hover:text-white'
+                      }`}
+                    >
+                      <span className="shrink-0">{item.icon}</span>
+                      <span className="flex-1 text-sm font-medium">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </nav>
+
+            <div className="p-3 border-t border-white/[0.06]">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  void handleLogout()
+                }}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-white/60 transition-colors hover:bg-white/[0.05] hover:text-white"
+              >
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm font-medium">Keluar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className={`${sidebarWidth} transition-all duration-300 p-4 md:p-6 pb-24 md:pb-6`}>
         <div className="max-w-5xl mx-auto">{children}</div>

@@ -164,6 +164,13 @@ export default function AdminReportsPage() {
                 ? (selectedPeriods[0] ? `Periode: ${selectedPeriods[0].label}` : 'Memuat...')
                 : `Periode: ${selectedPeriodIds.length} terpilih`
           }
+          actions={(
+            <PeriodSelector
+              periods={periods}
+              selected={selectedPeriodIds}
+              onChange={setSelectedPeriodIds}
+            />
+          )}
         />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -182,14 +189,6 @@ export default function AdminReportsPage() {
           >
             {exporting === 'excel' ? 'Export Excel...' : 'Export Excel'}
           </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="text-white/40 text-xs mr-2 hidden sm:block">Pilih Periode</label>
-          <PeriodSelector
-            periods={periods}
-            selected={selectedPeriodIds}
-            onChange={setSelectedPeriodIds}
-          />
         </div>
       </div>
 

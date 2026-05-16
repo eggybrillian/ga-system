@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { questions, objects, objectUserAssignments } from '@/lib/db/schema'
+import { questions, objects } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { normalizeQuestionWeight } from '@/lib/questions/weights'
 
@@ -11,30 +11,22 @@ export async function GET(
   { params }: { params: Promise<{ objectId: string }> }
 ) {
   try {
-    const session  = await requireRole('user')
+    await requireRole('user')
     const { objectId } = await params
-
-    // B2: pastikan user memang di-assign ke objek ini
-    const assignment = await db.query.objectUserAssignments.findFirst({
-      where: and(
-        eq(objectUserAssignments.objectId, objectId),
-        eq(objectUserAssignments.userId, session.id),
-      ),
-    })
-    if (!assignment) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
 
     const object = await db.query.objects.findFirst({
       where: eq(objects.id, objectId),
+      with: {
+        objectType: true,
+      },
     })
-    if (!object || object.isDeleted) {
+    if (!object || !object.isActive) {
       return NextResponse.json({ error: 'Objek tidak ditemukan' }, { status: 404 })
     }
 
     const rows = await db.query.questions.findMany({
       where: and(
-        eq(questions.objectType, object.type),
+        eq(questions.objectTypeId, object.objectTypeId),
         eq(questions.isActive, true),
       ),
       orderBy: (q, { asc }) => [asc(q.category), asc(q.sortOrder)],

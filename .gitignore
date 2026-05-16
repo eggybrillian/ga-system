@@ -41,3 +41,5 @@ yarn-error.log*
 
 # db
 init.sql
+
+revision.md

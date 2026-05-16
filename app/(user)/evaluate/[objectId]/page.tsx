@@ -82,11 +82,20 @@ export default function EvaluateFormPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError]       = useState('')
   const [saved, setSaved]       = useState(false)
+  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
     fetch(`/api/objects/${objectId}/questions`)
-      .then(r => r.json())
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok || data?.error === 'Unauthorized') {
+          router.push('/login')
+          return null
+        }
+        return data
+      })
       .then(data => {
+        if (!data) return
         setObject(data.object)
         setGrouped(data.grouped)
       })
@@ -120,6 +129,7 @@ export default function EvaluateFormPage() {
     return {
       objectId,
       isDraft,
+      feedback: feedback.trim(),
       scores: allQuestions.map(q => ({
         questionId: q.id,
         score:      scores[q.id]?.score ?? 0,
@@ -290,6 +300,21 @@ export default function EvaluateFormPage() {
             </section>
           )
         })}
+
+        <section>
+          <h2 className="text-white/50 text-xs uppercase tracking-widest mb-4 font-medium">Masukan Umum</h2>
+          <div className="bg-[#161b27] border border-white/[0.08] rounded-xl p-4 space-y-3">
+            <p className="text-white/35 text-sm">Tambahkan catatan umum, saran, atau keluhan terkait objek yang dinilai.</p>
+            <textarea
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              placeholder="Tuliskan masukan free text di sini..."
+              rows={4}
+              maxLength={2000}
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 resize-none"
+            />
+          </div>
+        </section>
       </main>
 
       {/* Bottom action bar */}

@@ -88,7 +88,11 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     where: eq(evaluationForms.userId, id),
     orderBy: [desc(evaluationForms.submittedAt)],
     with: {
-      object: true,
+      object: {
+        with: {
+          objectType: true,
+        },
+      },
       period: true,
       scores: {
         with: {
@@ -130,7 +134,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       objectGroup = {
         id: objectId,
         name: form.object?.name || 'Objek tidak diketahui',
-        type: form.object?.type || 'object',
+        type: form.object?.objectType?.slug || 'object',
         forms: [] as any[],
       }
       periodGroup.objects.push(objectGroup)
@@ -232,6 +236,22 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                           </div>
                         </div>
                       </div>
+
+                      {objectGroup.forms.some((form: any) => form.feedback) && (
+                        <div className="rounded-2xl border border-white/[0.06] bg-black/20 p-4 space-y-3">
+                          <div className="text-[11px] uppercase tracking-[0.12em] text-white/35">Masukan Objek</div>
+                          <div className="space-y-2">
+                            {objectGroup.forms.map((form: any) => (
+                              form.feedback ? (
+                                <div key={form.id} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white/70">
+                                  <div className="text-[11px] text-white/35 mb-1">{formatDate(form.submittedAt)}</div>
+                                  <div className="whitespace-pre-wrap break-words">{form.feedback}</div>
+                                </div>
+                              ) : null
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-4">
                         {objectGroup.forms.map((form: any) => {

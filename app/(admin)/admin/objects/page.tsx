@@ -4,17 +4,16 @@ import { useEffect, useState } from 'react'
 import PageHeader from '@/components/admin/PageHeader'
 
 type GAStaff = { id: string; name: string; nik: string }
-type User    = { id: string; name: string; nik: string; department: string }
 
 type ObjectItem = {
   id:     string
   name:   string
   type:   'mess' | 'office' | 'vehicle' | 'meeting_room'
+  isActive: boolean
   picGa:  GAStaff | null
-  userAssignments: { user: User }[]
 }
 
-type ModalMode = 'create' | 'edit' | 'assign-users' | null
+type ModalMode = 'create' | 'edit' | null
 
 const TYPE_LABEL: Record<string, string> = {
   mess: 'Mess', office: 'Kantor', vehicle: 'Kendaraan', meeting_room: 'Ruang Meeting',
@@ -34,15 +33,12 @@ const TYPE_FILTERS = [
 export default function AdminObjectsPage() {
   const [items, setItems]       = useState<ObjectItem[]>([])
   const [gaList, setGAList]     = useState<GAStaff[]>([])
-  const [userList, setUserList] = useState<User[]>([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState<string>('all')
 
   const [modal, setModal]             = useState<ModalMode>(null)
   const [editing, setEditing]         = useState<ObjectItem | null>(null)
   const [form, setForm]               = useState<ObjForm>(EMPTY_FORM)
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [userSearch, setUserSearch]   = useState('')
 
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState('')
@@ -58,7 +54,6 @@ export default function AdminObjectsPage() {
     ])
     setItems(Array.isArray(objRes) ? objRes : [])
     setGAList(memRes.gaStaff ?? [])
-    setUserList(memRes.users ?? [])
     setLoading(false)
   }
 
@@ -68,10 +63,6 @@ export default function AdminObjectsPage() {
   function openEdit(obj: ObjectItem) {
     setEditing(obj); setForm({ name: obj.name, type: obj.type, picGaId: obj.picGa?.id ?? '' })
     setError(''); setModal('edit')
-  }
-  function openAssignUsers(obj: ObjectItem) {
-    setEditing(obj); setSelectedUsers(obj.userAssignments.map(a => a.user.id))
-    setUserSearch(''); setError(''); setModal('assign-users')
   }
 
   async function handleSave() {
@@ -90,20 +81,6 @@ export default function AdminObjectsPage() {
     } finally { setSaving(false) }
   }
 
-  async function handleAssignUsers() {
-    if (!editing) return
-    setSaving(true); setError('')
-    try {
-      const res  = await fetch(`/api/admin/objects/${editing.id}/assign-users`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userIds: selectedUsers }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
-      setModal(null); loadAll()
-    } finally { setSaving(false) }
-  }
-
   async function handleDelete() {
     if (!deleteId) return
     setDeleteError('')
@@ -113,15 +90,17 @@ export default function AdminObjectsPage() {
     setDeleteId(null); loadAll()
   }
 
-  function toggleUser(id: string) {
-    setSelectedUsers(prev => prev.includes(id) ? prev.filter(u => u !== id) : [...prev, id])
+  async function toggleActive(obj: ObjectItem) {
+    try {
+      await fetch(`/api/admin/objects/${obj.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !obj.isActive }),
+      })
+      loadAll()
+    } catch {
+      // ignore
+    }
   }
-
-  const filteredUsers = userList.filter(u =>
-    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.nik.toLowerCase().includes(userSearch.toLowerCase()) ||
-    (u.department ?? '').toLowerCase().includes(userSearch.toLowerCase())
-  )
 
   const filteredItems = filter === 'all'
     ? items
@@ -138,7 +117,7 @@ export default function AdminObjectsPage() {
       <main className="max-w-5xl mx-auto px-4 md:px-2 py-4 space-y-6">
         <PageHeader
           title="Kelola Objek"
-          subtitle="Atur fasilitas, PIC GA, dan daftar user penilai untuk setiap objek"
+          subtitle="Atur fasilitas, PIC GA, dan status aktif objek"
           actions={(
             <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -182,20 +161,15 @@ export default function AdminObjectsPage() {
                       <p className="font-medium mb-1">{obj.name}</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/40">
                         <span>PIC: <span className={obj.picGa ? 'text-white/60' : 'text-amber-400'}>{obj.picGa?.name ?? '⚠ Belum di-assign'}</span></span>
-                        <span>{obj.userAssignments.length > 0 ? `${obj.userAssignments.length} penilai` : <span className="text-amber-400">⚠ Belum ada penilai</span>}</span>
                       </div>
-                      {obj.userAssignments.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {obj.userAssignments.slice(0,3).map(a => (
-                            <span key={a.user.id} className="text-xs bg-white/[0.05] border border-white/[0.06] rounded-full px-2 py-0.5 text-white/40">{a.user.name}</span>
-                          ))}
-                          {obj.userAssignments.length > 3 && <span className="text-xs text-white/20 px-1 py-0.5">+{obj.userAssignments.length - 3} lainnya</span>}
-                        </div>
-                      )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => openAssignUsers(obj)} title="Assign Penilai" className="w-9 h-9 flex items-center justify-center rounded-lg text-white/30 hover:text-blue-400 hover:bg-blue-500/10 transition-colors">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      <button onClick={() => toggleActive(obj)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
+                          ${obj.isActive
+                            ? 'border-white/10 text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+                            : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}>
+                        {obj.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                       </button>
                       <button onClick={() => openEdit(obj)} title="Edit" className="w-9 h-9 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -275,58 +249,13 @@ export default function AdminObjectsPage() {
         </div>
       )}
 
-      {/* Assign Users Modal */}
-      {modal === 'assign-users' && editing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-md flex flex-col max-h-[85vh]">
-            <div className="p-5 border-b border-white/[0.06] shrink-0">
-              <h2 className="font-semibold">Assign Penilai</h2>
-              <p className="text-white/40 text-sm mt-0.5">{editing.name}</p>
-            </div>
-            <div className="p-4 border-b border-white/[0.04] shrink-0">
-              <input type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Cari nama, NIK, atau departemen..."
-                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-blue-500/50" />
-              <p className="text-white/30 text-xs mt-2">{selectedUsers.length} dari {userList.length} user dipilih</p>
-            </div>
-            <div className="overflow-y-auto flex-1 p-2">
-              {filteredUsers.length === 0 ? (
-                <p className="text-white/20 text-sm text-center py-6">Tidak ada user ditemukan</p>
-              ) : filteredUsers.map(u => {
-                const selected = selectedUsers.includes(u.id)
-                return (
-                  <button key={u.id} onClick={() => toggleUser(u.id)}
-                    className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${selected ? 'bg-blue-500/10' : 'hover:bg-white/[0.03]'}`}>
-                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${selected ? 'bg-[#3b82f6] border-[#3b82f6]' : 'border-white/20'}`}>
-                      {selected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white">{u.name}</p>
-                      <p className="text-xs text-white/30 truncate">{u.nik} · {u.department}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="p-4 border-t border-white/[0.06] shrink-0">
-              {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-              <div className="flex gap-3">
-                <button onClick={() => { setModal(null); setError('') }} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
-                <button onClick={handleAssignUsers} disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
-                  {saving ? 'Menyimpan...' : 'Simpan'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete confirm */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div>
-              <h3 className="font-semibold">Hapus Objek</h3>
-              <p className="text-white/40 text-sm mt-1">Yakin menghapus objek ini?</p>
+              <h3 className="font-semibold">Hapus Objek?</h3>
+              <p className="text-white/40 text-sm mt-1">Objek yang sudah memiliki riwayat evaluasi tidak dapat dihapus.</p>
             </div>
             {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
             <div className="flex gap-3">

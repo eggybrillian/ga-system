@@ -1,5 +1,5 @@
 {
-  "id": "c68666a3-43de-4ce3-810d-40b04b33d87b",
+  "id": "3f428042-0e84-4d23-94b3-1f947971257d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -110,6 +110,12 @@
         "submitted_at": {
           "name": "submitted_at",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feedback": {
+          "name": "feedback",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -484,6 +490,74 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.object_types": {
+      "name": "object_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "object_types_slug_unique": {
+          "name": "object_types_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.object_user_assignments": {
       "name": "object_user_assignments",
       "schema": "",
@@ -576,10 +650,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "type": {
-          "name": "type",
-          "type": "object_type",
-          "typeSchema": "public",
+        "object_type_id": {
+          "name": "object_type_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -589,12 +662,12 @@
           "primaryKey": false,
           "notNull": false
         },
-        "is_deleted": {
-          "name": "is_deleted",
+        "is_active": {
+          "name": "is_active",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": false
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -613,6 +686,19 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "objects_object_type_id_object_types_id_fk": {
+          "name": "objects_object_type_id_object_types_id_fk",
+          "tableFrom": "objects",
+          "tableTo": "object_types",
+          "columnsFrom": [
+            "object_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "objects_pic_ga_id_ga_staff_id_fk": {
           "name": "objects_pic_ga_id_ga_staff_id_fk",
           "tableFrom": "objects",
@@ -644,10 +730,9 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "object_type": {
-          "name": "object_type",
-          "type": "object_type",
-          "typeSchema": "public",
+        "object_type_id": {
+          "name": "object_type_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -691,6 +776,52 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "questions_object_type_id_object_types_id_fk": {
+          "name": "questions_object_type_id_object_types_id_fk",
+          "tableFrom": "questions",
+          "tableTo": "object_types",
+          "columnsFrom": [
+            "object_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.settings": {
+      "name": "settings",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "varchar(100)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "updated_at": {
           "name": "updated_at",

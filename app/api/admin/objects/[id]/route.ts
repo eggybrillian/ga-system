@@ -11,19 +11,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     await requireRole('admin', 'superadmin')
     const { id } = await params
-    const { name, type, picGaId } = await req.json()
+    const body = await req.json()
 
-    if (!name?.trim() || !type) {
-      return NextResponse.json({ error: 'Nama dan tipe wajib diisi' }, { status: 400 })
+    const existing = await db.query.objects.findFirst({ where: eq(objects.id, id) })
+    if (!existing) return NextResponse.json({ error: 'Objek tidak ditemukan' }, { status: 404 })
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() }
+    if (body.name !== undefined) {
+      if (!body.name?.trim()) return NextResponse.json({ error: 'Nama objek tidak boleh kosong' }, { status: 400 })
+      updateData.name = body.name.trim()
     }
+    if (body.type !== undefined) updateData.type = body.type
+    if (body.picGaId !== undefined) updateData.picGaId = body.picGaId || null
+    if (body.isActive !== undefined) updateData.isActive = body.isActive
 
     const [updated] = await db
       .update(objects)
-      .set({ name: name.trim(), type, picGaId: picGaId || null, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(objects.id, id))
       .returning()
 
-    if (!updated) return NextResponse.json({ error: 'Objek tidak ditemukan' }, { status: 404 })
     return NextResponse.json(updated)
   } catch {
     return NextResponse.json({ error: 'Gagal mengupdate objek' }, { status: 500 })
@@ -41,9 +48,10 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     })
 
     if (hasEval) {
-      // Soft delete
-      await db.update(objects).set({ isDeleted: true, updatedAt: new Date() }).where(eq(objects.id, id))
-      return NextResponse.json({ deleted: 'soft' })
+      return NextResponse.json(
+        { error: 'Objek tidak dapat dihapus karena sudah memiliki riwayat evaluasi' },
+        { status: 400 }
+      )
     }
 
     // Hard delete jika belum ada evaluasi

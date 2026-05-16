@@ -137,7 +137,7 @@ export default function AdminPeriodsPage() {
                     {p.type === 'monthly' ? 'Bulanan' : 'Event'}
                   </span>
                 </div>
-                <p className="text-white/40 text-sm">{fmt(p.startDate)} — {fmt(p.endDate)}</p>
+                <p className="text-white/40 text-xs">{fmt(p.startDate)} — {fmt(p.endDate)}</p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -198,7 +198,7 @@ export default function AdminPeriodsPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tanggal Mulai</label>
                   <input
@@ -228,7 +228,7 @@ export default function AdminPeriodsPage() {
                 {error}
               </div>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-lg py-2.5 text-sm transition-colors">Batal</button>
               <button onClick={handleSave} disabled={saving}
@@ -249,7 +249,7 @@ export default function AdminPeriodsPage() {
               <p className="text-white/40 text-sm mt-1">Periode yang sudah memiliki data evaluasi tidak dapat dihapus.</p>
             </div>
             {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-lg py-2.5 text-sm transition-colors">Batal</button>
               <button onClick={handleDelete} className="flex-1 bg-red-500/80 hover:bg-red-500 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">Hapus</button>
             </div>

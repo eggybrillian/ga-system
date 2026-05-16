@@ -48,17 +48,32 @@ export default function EvaluatePage() {
 
   useEffect(() => {
     fetch('/api/objects')
-      .then(r => r.json())
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok || data?.error === 'Unauthorized') {
+          router.push('/login')
+          return null
+        }
+        return data
+      })
       .then(data => {
-        setPeriod(data.period)
-        setItems(data.objects)
+        if (!data) return
+        setPeriod(data?.period ?? null)
+        setItems(Array.isArray(data?.objects) ? data.objects : [])
       })
       .finally(() => setLoading(false))
 
     // Ambil nama dari cookie/session via endpoint sederhana
     fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(d => setUserName(d.name ?? ''))
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok || data?.error === 'Unauthorized') {
+          router.push('/login')
+          return null
+        }
+        return data
+      })
+      .then(d => setUserName(d?.name ?? ''))
       .catch(() => {})
   }, [])
 
@@ -67,9 +82,10 @@ export default function EvaluatePage() {
     router.push('/login')
   }
 
-  const pending   = items.filter(i => i.status === 'pending').length
-  const submitted = items.filter(i => i.status === 'submitted').length
-  const total     = items.length
+  const safeItems = Array.isArray(items) ? items : []
+  const pending   = safeItems.filter(i => i.status === 'pending').length
+  const submitted = safeItems.filter(i => i.status === 'submitted').length
+  const total     = safeItems.length
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-white">

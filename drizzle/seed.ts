@@ -49,17 +49,33 @@ async function main() {
     { nik: 'A002', employeeName: 'Dewi Rahayu',  role: 'admin',      grantedBy: 'A001' },
   ])
 
+  // ── OBJECT TYPES ──────────────────────────────────────────
+  console.log('  → object_types')
+  const objectTypeRows = await db
+    .insert(schema.objectTypes)
+    .values([
+      { name: 'Mess',        slug: 'mess',         sortOrder: 1 },
+      { name: 'Office',      slug: 'office',       sortOrder: 2 },
+      { name: 'Vehicle',     slug: 'vehicle',      sortOrder: 3 },
+      { name: 'Meeting Room', slug: 'meeting_room', sortOrder: 4 },
+    ])
+    .returning()
+
+  const objectTypeIdBySlug = Object.fromEntries(
+    objectTypeRows.map((row) => [row.slug, row.id]),
+  ) as Record<string, string>
+
   // ── OBJECTS ────────────────────────────────────────────────
   console.log('  → objects')
   const [messA, messB, officeL1, officeL2, meetingMain, vehiclePool] = await db
     .insert(schema.objects)
     .values([
-      { name: 'Mess Block A',        type: 'mess',         picGaId: g1.id },
-      { name: 'Mess Block B',        type: 'mess',         picGaId: g2.id },
-      { name: 'Office Lantai 1',     type: 'office',       picGaId: g1.id },
-      { name: 'Office Lantai 2',     type: 'office',       picGaId: g3.id },
-      { name: 'Meeting Room Utama',  type: 'meeting_room', picGaId: g3.id },
-      { name: 'Kendaraan Pool',      type: 'vehicle',      picGaId: g2.id },
+      { name: 'Mess Block A',        objectTypeId: objectTypeIdBySlug.mess,         picGaId: g1.id },
+      { name: 'Mess Block B',        objectTypeId: objectTypeIdBySlug.mess,         picGaId: g2.id },
+      { name: 'Office Lantai 1',     objectTypeId: objectTypeIdBySlug.office,       picGaId: g1.id },
+      { name: 'Office Lantai 2',     objectTypeId: objectTypeIdBySlug.office,       picGaId: g3.id },
+      { name: 'Meeting Room Utama',  objectTypeId: objectTypeIdBySlug.meeting_room, picGaId: g3.id },
+      { name: 'Kendaraan Pool',      objectTypeId: objectTypeIdBySlug.vehicle,      picGaId: g2.id },
     ])
     .returning()
 
@@ -116,32 +132,32 @@ async function main() {
   console.log('  → questions')
   await db.insert(schema.questions).values([
     // ── MESS ──
-    { objectType: 'mess', category: 'facility_quality',   text: 'Kebersihan kamar dan area bersama',       weight: '1.0', sortOrder: 1 },
-    { objectType: 'mess', category: 'facility_quality',   text: 'Ketersediaan air dan listrik',            weight: '1.0', sortOrder: 2 },
-    { objectType: 'mess', category: 'service_performance',text: 'Kecepatan respon laporan kerusakan',      weight: '1.5', sortOrder: 1 },
-    { objectType: 'mess', category: 'service_performance',text: 'Sikap dan keramahan petugas GA',          weight: '1.0', sortOrder: 2 },
-    { objectType: 'mess', category: 'user_satisfaction',  text: 'Kepuasan keseluruhan terhadap fasilitas mess', weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.mess, category: 'facility_quality',    text: 'Kebersihan kamar dan area bersama',            weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.mess, category: 'facility_quality',    text: 'Ketersediaan air dan listrik',                 weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.mess, category: 'service_performance', text: 'Kecepatan respon laporan kerusakan',           weight: '1.5', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.mess, category: 'service_performance', text: 'Sikap dan keramahan petugas GA',               weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.mess, category: 'user_satisfaction',   text: 'Kepuasan keseluruhan terhadap fasilitas mess', weight: '1.0', sortOrder: 1 },
 
     // ── OFFICE ──
-    { objectType: 'office', category: 'facility_quality',   text: 'Kebersihan ruang kerja dan toilet',           weight: '1.0', sortOrder: 1 },
-    { objectType: 'office', category: 'facility_quality',   text: 'Fungsi AC dan pencahayaan',                   weight: '1.0', sortOrder: 2 },
-    { objectType: 'office', category: 'service_performance',text: 'Kecepatan penanganan kerusakan/permintaan',   weight: '1.5', sortOrder: 1 },
-    { objectType: 'office', category: 'service_performance',text: 'Ketersediaan ATK dan perlengkapan kantor',    weight: '1.0', sortOrder: 2 },
-    { objectType: 'office', category: 'user_satisfaction',  text: 'Kepuasan keseluruhan terhadap fasilitas kantor', weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.office, category: 'facility_quality',    text: 'Kebersihan ruang kerja dan toilet',             weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.office, category: 'facility_quality',    text: 'Fungsi AC dan pencahayaan',                     weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.office, category: 'service_performance', text: 'Kecepatan penanganan kerusakan/permintaan',     weight: '1.5', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.office, category: 'service_performance', text: 'Ketersediaan ATK dan perlengkapan kantor',      weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.office, category: 'user_satisfaction',   text: 'Kepuasan keseluruhan terhadap fasilitas kantor', weight: '1.0', sortOrder: 1 },
 
     // ── VEHICLE ──
-    { objectType: 'vehicle', category: 'facility_quality',   text: 'Kondisi dan kebersihan kendaraan',               weight: '1.0', sortOrder: 1 },
-    { objectType: 'vehicle', category: 'facility_quality',   text: 'Ketersediaan BBM dan kelengkapan kendaraan',     weight: '1.0', sortOrder: 2 },
-    { objectType: 'vehicle', category: 'service_performance',text: 'Ketepatan waktu penjemputan/pengantaran',        weight: '1.5', sortOrder: 1 },
-    { objectType: 'vehicle', category: 'service_performance',text: 'Sikap dan profesionalisme pengemudi',            weight: '1.0', sortOrder: 2 },
-    { objectType: 'vehicle', category: 'user_satisfaction',  text: 'Kepuasan keseluruhan terhadap layanan kendaraan',weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.vehicle, category: 'facility_quality',    text: 'Kondisi dan kebersihan kendaraan',                weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.vehicle, category: 'facility_quality',    text: 'Ketersediaan BBM dan kelengkapan kendaraan',      weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.vehicle, category: 'service_performance', text: 'Ketepatan waktu penjemputan/pengantaran',         weight: '1.5', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.vehicle, category: 'service_performance', text: 'Sikap dan profesionalisme pengemudi',             weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.vehicle, category: 'user_satisfaction',   text: 'Kepuasan keseluruhan terhadap layanan kendaraan', weight: '1.0', sortOrder: 1 },
 
     // ── MEETING ROOM ──
-    { objectType: 'meeting_room', category: 'facility_quality',   text: 'Kebersihan dan kerapian ruang',                       weight: '1.0', sortOrder: 1 },
-    { objectType: 'meeting_room', category: 'facility_quality',   text: 'Fungsi proyektor, AC, dan peralatan meeting',          weight: '1.5', sortOrder: 2 },
-    { objectType: 'meeting_room', category: 'service_performance',text: 'Kesiapan ruangan sesuai jadwal booking',               weight: '1.5', sortOrder: 1 },
-    { objectType: 'meeting_room', category: 'service_performance',text: 'Kecepatan respon jika ada masalah teknis',              weight: '1.0', sortOrder: 2 },
-    { objectType: 'meeting_room', category: 'user_satisfaction',  text: 'Kepuasan keseluruhan terhadap fasilitas meeting room', weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.meeting_room, category: 'facility_quality',    text: 'Kebersihan dan kerapian ruang',                        weight: '1.0', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.meeting_room, category: 'facility_quality',    text: 'Fungsi proyektor, AC, dan peralatan meeting',           weight: '1.5', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.meeting_room, category: 'service_performance', text: 'Kesiapan ruangan sesuai jadwal booking',                weight: '1.5', sortOrder: 1 },
+    { objectTypeId: objectTypeIdBySlug.meeting_room, category: 'service_performance', text: 'Kecepatan respon jika ada masalah teknis',               weight: '1.0', sortOrder: 2 },
+    { objectTypeId: objectTypeIdBySlug.meeting_room, category: 'user_satisfaction',   text: 'Kepuasan keseluruhan terhadap fasilitas meeting room',  weight: '1.0', sortOrder: 1 },
   ])
 
   // ── SETTINGS ───────────────────────────────────────────────

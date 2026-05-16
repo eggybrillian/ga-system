@@ -23,6 +23,7 @@ CREATE TABLE "evaluation_forms" (
 	"period_id" uuid NOT NULL,
 	"is_draft" boolean DEFAULT true NOT NULL,
 	"submitted_at" timestamp,
+	"feedback" text,
 	"archive_year" integer,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -73,6 +74,17 @@ CREATE TABLE "notifications" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "object_types" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"slug" varchar(100) NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "object_types_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
 CREATE TABLE "object_user_assignments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"object_id" uuid NOT NULL,
@@ -84,22 +96,28 @@ CREATE TABLE "object_user_assignments" (
 CREATE TABLE "objects" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"type" "object_type" NOT NULL,
+	"object_type_id" uuid NOT NULL,
 	"pic_ga_id" uuid,
-	"is_deleted" boolean DEFAULT false NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "questions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"object_type" "object_type" NOT NULL,
+	"object_type_id" uuid NOT NULL,
 	"category" "category" NOT NULL,
 	"text" varchar(500) NOT NULL,
 	"weight" numeric(4, 2) DEFAULT '1.00' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "settings" (
+	"key" varchar(100) PRIMARY KEY NOT NULL,
+	"value" text NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -132,4 +150,6 @@ ALTER TABLE "evaluation_scores" ADD CONSTRAINT "evaluation_scores_form_id_evalua
 ALTER TABLE "evaluation_scores" ADD CONSTRAINT "evaluation_scores_question_id_questions_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "object_user_assignments" ADD CONSTRAINT "object_user_assignments_object_id_objects_id_fk" FOREIGN KEY ("object_id") REFERENCES "public"."objects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "object_user_assignments" ADD CONSTRAINT "object_user_assignments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "objects" ADD CONSTRAINT "objects_pic_ga_id_ga_staff_id_fk" FOREIGN KEY ("pic_ga_id") REFERENCES "public"."ga_staff"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "objects" ADD CONSTRAINT "objects_object_type_id_object_types_id_fk" FOREIGN KEY ("object_type_id") REFERENCES "public"."object_types"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "objects" ADD CONSTRAINT "objects_pic_ga_id_ga_staff_id_fk" FOREIGN KEY ("pic_ga_id") REFERENCES "public"."ga_staff"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "questions" ADD CONSTRAINT "questions_object_type_id_object_types_id_fk" FOREIGN KEY ("object_type_id") REFERENCES "public"."object_types"("id") ON DELETE no action ON UPDATE no action;

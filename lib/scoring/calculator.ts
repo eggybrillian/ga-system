@@ -4,7 +4,6 @@ import {
   evaluationForms,
   evaluationScores,
   evaluationPeriods,
-  objects,
   gaStaff,
   questions,
   settings,
@@ -147,7 +146,7 @@ export async function calcGAScores(
   // Ambil semua GA staff aktif beserta objek yang mereka kelola
   const allGA = await db.query.gaStaff.findMany({
     where: eq(gaStaff.isActive, true),
-    with: { objects: { where: eq(objects.isDeleted, false) } },
+    with: { objects: { with: { objectType: true } } },
   })
 
   const result: GAScore[] = []
@@ -163,7 +162,7 @@ export async function calcGAScores(
         objectScores.push({
           objectId:        obj.id,
           objectName:      obj.name,
-          objectType:      obj.type,
+          objectType:      obj.objectType?.slug ?? 'object',
           scores:          { facility_quality: null, service_performance: null, user_satisfaction: null, final: null },
           submissionCount: 0,
         })
@@ -197,7 +196,7 @@ export async function calcGAScores(
       objectScores.push({
         objectId:        obj.id,
         objectName:      obj.name,
-        objectType:      obj.type,
+        objectType:      obj.objectType?.slug ?? 'object',
         scores:          { ...catScores, final: finalScore },
         submissionCount: objForms.length,
       })
@@ -271,7 +270,7 @@ export async function calcGAScoresForPeriodIds(
   // Ambil semua GA staff aktif beserta objek yang mereka kelola
   const allGA = await db.query.gaStaff.findMany({
     where: eq(gaStaff.isActive, true),
-    with: { objects: { where: eq(objects.isDeleted, false) } },
+    with: { objects: { with: { objectType: true } } },
   })
 
   const result: GAScore[] = []
@@ -286,7 +285,7 @@ export async function calcGAScoresForPeriodIds(
         objectScores.push({
           objectId:        obj.id,
           objectName:      obj.name,
-          objectType:      obj.type,
+          objectType:      obj.objectType?.slug ?? 'object',
           scores:          { facility_quality: null, service_performance: null, user_satisfaction: null, final: null },
           submissionCount: 0,
         })
@@ -319,7 +318,7 @@ export async function calcGAScoresForPeriodIds(
       objectScores.push({
         objectId:        obj.id,
         objectName:      obj.name,
-        objectType:      obj.type,
+        objectType:      obj.objectType?.slug ?? 'object',
         scores:          { ...catScores, final: finalScore },
         submissionCount: objForms.length,
       })

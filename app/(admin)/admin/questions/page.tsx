@@ -56,7 +56,12 @@ export default function AdminQuestionsPage() {
 
   function load() {
     setLoading(true)
-    fetch('/api/admin/questions').then(r => r.json()).then(setQuestions).finally(() => setLoading(false))
+    fetch('/api/admin/questions')
+      .then(r => r.json())
+      .then((data) => {
+        setQuestions(Array.isArray(data) ? data : [])
+      })
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -237,7 +242,7 @@ export default function AdminQuestionsPage() {
           <div className="bg-[#161b27] border border-white/[0.1] rounded-2xl w-full max-w-md p-6 space-y-5">
             <h2 className="font-semibold">{modal === 'create' ? 'Tambah Pertanyaan' : 'Edit Pertanyaan'}</h2>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Tipe Objek</label>
                   <div className="relative">
@@ -281,7 +286,7 @@ export default function AdminQuestionsPage() {
                   rows={3} placeholder="Tulis pertanyaan evaluasi..."
                   className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-3.5 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 resize-none" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-white/50 uppercase tracking-wider block mb-1.5">Bobot</label>
                   <div className="relative">
@@ -315,7 +320,7 @@ export default function AdminQuestionsPage() {
                 {error}
               </div>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => { setModal(null); setError('') }}
                 className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
               <button onClick={handleSave} disabled={saving}
@@ -336,7 +341,7 @@ export default function AdminQuestionsPage() {
               <p className="text-white/40 text-sm mt-1">Pertanyaan yang sudah memiliki data evaluasi tidak dapat dihapus.</p>
             </div>
             {deleteError && <p className="text-red-400 text-sm">{deleteError}</p>}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 bg-white/[0.06] hover:bg-white/[0.10] text-white/70 rounded-xl py-2.5 text-sm transition-colors">Batal</button>
               <button onClick={handleDelete} className="flex-1 bg-red-500/80 hover:bg-red-500 text-white rounded-xl py-2.5 text-sm font-medium transition-colors">Hapus</button>
             </div>

@@ -7,6 +7,7 @@ import {
   evaluationForms,
   evaluationScores,
   questions,
+  objectTypes,
   objects,
   gaStaff,
 } from '@/lib/db/schema'
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
         periodLabel: evaluationPeriods.label,
         objectId: objects.id,
         objectName: objects.name,
-        objectType: objects.type,
+        objectType: objectTypes.slug,
         gaName: gaStaff.name,
         questionId: questions.id,
         questionText: questions.text,
@@ -116,6 +117,7 @@ export async function GET(request: Request) {
       .innerJoin(evaluationForms, eq(evaluationScores.formId, evaluationForms.id))
       .innerJoin(evaluationPeriods, eq(evaluationForms.periodId, evaluationPeriods.id))
       .innerJoin(objects, eq(evaluationForms.objectId, objects.id))
+      .innerJoin(objectTypes, eq(objects.objectTypeId, objectTypes.id))
       .innerJoin(gaStaff, eq(objects.picGaId, gaStaff.id))
       .where(
         and(

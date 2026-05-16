@@ -156,7 +156,13 @@ export default function AdminDashboardPage() {
           }
           setGAScores(scoresResponse.gaScores ?? [])
           setStats(scoresResponse.stats)
-          setAnalytics(analyticsResponse)
+          // If the analytics endpoint returned an error object, treat as no analytics
+          if (analyticsResponse && typeof analyticsResponse === 'object' && 'error' in analyticsResponse) {
+            console.error('Analytics API error', analyticsResponse)
+            setAnalytics(null)
+          } else {
+            setAnalytics(analyticsResponse)
+          }
           if (typeof scoresResponse.threshold === 'number') {
             setThreshold(scoresResponse.threshold)
           } else if (scoresResponse.threshold) {
@@ -243,7 +249,7 @@ export default function AdminDashboardPage() {
             <div className="bg-[#161b27] border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
               <div className="px-4 md:px-5 py-4 border-b border-white/[0.06]">
                 <h2 className="font-medium text-sm mb-3">Isu Utama</h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
                   {[
                     { id: 'objects', label: 'Objek Rendah', count: analytics.topLowestObjects.length },
                     { id: 'questions', label: 'Pertanyaan Rendah', count: analytics.topLowestQuestions.length },

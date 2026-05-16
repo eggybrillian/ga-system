@@ -6,7 +6,6 @@ import {
   evaluationForms,
   evaluationScores,
   evaluationPeriods,
-  objectUserAssignments,
   questions,
   objects,
   adminFlags,
@@ -24,11 +23,14 @@ type ScoreInput = {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireRole('user')
-    const { objectId, scores, isDraft } = await req.json() as {
+    const body = await req.json() as {
       objectId: string
       scores:   ScoreInput[]
       isDraft:  boolean
+      feedback?: string
     }
+    const { objectId, scores, isDraft } = body
+    const feedback = typeof body.feedback === 'string' ? body.feedback.trim() : ''
 
     if (!objectId || !scores?.length) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
@@ -43,15 +45,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tidak ada periode evaluasi yang aktif' }, { status: 400 })
     }
 
-    // B2: cek user di-assign ke objek ini
-    const assignment = await db.query.objectUserAssignments.findFirst({
-      where: and(
-        eq(objectUserAssignments.objectId, objectId),
-        eq(objectUserAssignments.userId, session.id),
-      ),
+    const objectRow = await db.query.objects.findFirst({
+      where: eq(objects.id, objectId),
     })
-    if (!assignment) {
-      return NextResponse.json({ error: 'Anda tidak memiliki akses ke objek ini' }, { status: 403 })
+    if (!objectRow || !objectRow.isActive) {
+      return NextResponse.json({ error: 'Objek tidak ditemukan' }, { status: 404 })
     }
 
     // B1: cek apakah sudah ada form (untuk update draft)
@@ -92,6 +90,7 @@ export async function POST(req: NextRequest) {
           .set({
             isDraft:     isDraft,
             submittedAt: isDraft ? null : new Date(),
+            feedback:    feedback || null,
             updatedAt:   new Date(),
           })
           .where(eq(evaluationForms.id, existingForm.id))
@@ -112,6 +111,7 @@ export async function POST(req: NextRequest) {
             periodId:    period.id,
             isDraft:     isDraft,
             submittedAt: isDraft ? null : new Date(),
+            feedback:    feedback || null,
           })
           .returning()
         formId = newForm.id

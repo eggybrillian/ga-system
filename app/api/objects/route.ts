@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { objectUserAssignments, objects, gaStaff, evaluationForms, evaluationPeriods } from '@/lib/db/schema'
+import { objects, evaluationForms, evaluationPeriods } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function GET() {
@@ -15,20 +15,14 @@ export async function GET() {
       orderBy: (periods, { asc }) => [asc(periods.startDate)],
     })
 
-    // Ambil semua objek yang di-assign ke user ini
-    const assignments = await db.query.objectUserAssignments.findMany({
-      where: eq(objectUserAssignments.userId, session.id),
+    const activeObjects = await db.query.objects.findMany({
+      where: eq(objects.isActive, true),
       with: {
-        object: {
-          with: { picGa: true },
-        },
+        picGa: true,
+        objectType: true,
       },
+      orderBy: (o, { asc }) => [asc(o.objectTypeId), asc(o.name)],
     })
-
-    // Filter objek yang tidak soft-deleted
-    const activeObjects = assignments
-      .map(a => a.object)
-      .filter(o => !o.isDeleted)
 
     if (!activePeriod) {
       return NextResponse.json({
@@ -36,7 +30,7 @@ export async function GET() {
         objects: activeObjects.map(o => ({
           id:      o.id,
           name:    o.name,
-          type:    o.type,
+          type:    o.objectType?.slug || 'object',
           picGa:   o.picGa ? { name: o.picGa.name } : null,
           status:  'no_period', // tidak ada periode aktif
         })),
@@ -58,7 +52,7 @@ export async function GET() {
       return {
         id:     o.id,
         name:   o.name,
-        type:   o.type,
+        type:   o.objectType?.slug || 'object',
         picGa:  o.picGa ? { name: o.picGa.name } : null,
         status: !form
           ? 'pending'

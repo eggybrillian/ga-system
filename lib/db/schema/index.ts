@@ -115,9 +115,9 @@ export const adminFlags = pgTable('admin_flags', {
 export const objects = pgTable('objects', {
   id:        uuid('id').primaryKey().defaultRandom(),
   name:      varchar('name', { length: 255 }).notNull(),
-  type:      objectTypeEnum('type').notNull(),
+  objectTypeId: uuid('object_type_id').notNull().references(() => objectTypes.id),
   picGaId:   uuid('pic_ga_id').references(() => gaStaff.id, { onDelete: 'set null' }),
-  isDeleted: boolean('is_deleted').default(false).notNull(),
+  isActive:  boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -153,7 +153,7 @@ export const evaluationPeriods = pgTable('evaluation_periods', {
 
 export const questions = pgTable('questions', {
   id:         uuid('id').primaryKey().defaultRandom(),
-  objectType: objectTypeEnum('object_type').notNull(),
+  objectTypeId: uuid('object_type_id').notNull().references(() => objectTypes.id),
   category:   categoryEnum('category').notNull(),
   text:       varchar('text', { length: 500 }).notNull(),
   weight:     decimal('weight', { precision: 4, scale: 2 }).notNull().default('1.00'),
@@ -174,6 +174,7 @@ export const evaluationForms = pgTable('evaluation_forms', {
   periodId:    uuid('period_id').notNull().references(() => evaluationPeriods.id),
   isDraft:     boolean('is_draft').default(true).notNull(),
   submittedAt: timestamp('submitted_at'),
+  feedback:    text('feedback'),
   archiveYear: integer('archive_year'), // untuk soft archive tahunan
   createdAt:   timestamp('created_at').defaultNow().notNull(),
   updatedAt:   timestamp('updated_at').defaultNow().notNull(),
@@ -233,6 +234,22 @@ export const settings = pgTable('settings', {
 })
 
 // ============================================================
+// OBJECT TYPES (configurable by admin)
+// ============================================================
+
+export const objectTypes = pgTable('object_types', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  name:      varchar('name', { length: 100 }).notNull(),
+  slug:      varchar('slug', { length: 100 }).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  isActive:  boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({
+  uniqueSlug: unique().on(t.slug),
+}))
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
@@ -249,6 +266,7 @@ export const objectsRelations = relations(objects, ({ one, many }) => ({
   picGa:           one(gaStaff, { fields: [objects.picGaId], references: [gaStaff.id] }),
   userAssignments: many(objectUserAssignments),
   evaluationForms: many(evaluationForms),
+  objectType:      one(objectTypes, { fields: [objects.objectTypeId], references: [objectTypes.id] }),
 }))
 
 export const objectUserAssignmentsRelations = relations(objectUserAssignments, ({ one }) => ({
@@ -260,8 +278,9 @@ export const evaluationPeriodsRelations = relations(evaluationPeriods, ({ many }
   evaluationForms: many(evaluationForms),
 }))
 
-export const questionsRelations = relations(questions, ({ many }) => ({
+export const questionsRelations = relations(questions, ({ one, many }) => ({
   scores: many(evaluationScores),
+  objectType: one(objectTypes, { fields: [questions.objectTypeId], references: [objectTypes.id] }),
 }))
 
 export const evaluationFormsRelations = relations(evaluationForms, ({ one, many }) => ({
@@ -274,6 +293,11 @@ export const evaluationFormsRelations = relations(evaluationForms, ({ one, many 
 export const evaluationScoresRelations = relations(evaluationScores, ({ one }) => ({
   form:     one(evaluationForms, { fields: [evaluationScores.formId],     references: [evaluationForms.id] }),
   question: one(questions,       { fields: [evaluationScores.questionId], references: [questions.id] }),
+}))
+
+export const objectTypesRelations = relations(objectTypes, ({ many }) => ({
+  objects:   many(objects),
+  questions: many(questions),
 }))
 
 // ============================================================
@@ -300,3 +324,5 @@ export type NewEvaluationScore     = typeof evaluationScores.$inferInsert
 export type Notification           = typeof notifications.$inferSelect
 export type SyncLog                = typeof syncLogs.$inferSelect
 export type Setting                = typeof settings.$inferSelect
+export type ObjectType             = typeof objectTypes.$inferSelect
+export type NewObjectType          = typeof objectTypes.$inferInsert
